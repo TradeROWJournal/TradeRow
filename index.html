@@ -1498,8 +1498,7 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
 <div id="auth-gate">
   <div class="ag-container">
     <div class="ag-label">TradeROW System v1.0</div>
-    <div class="ag-title">WELCOME BACK</div>
-    <div class="ag-sub">Sign in to sync your trades to the cloud.<br>Your data stays local if you skip.</div>
+    <div id="ag-title" class="ag-title">WELCOME BACK</div>
 
     <!-- Tab switcher -->
     <div class="ag-tabs">
@@ -6167,6 +6166,9 @@ function agSwitchTab(tab) {
   document.getElementById('ag-tab-register').classList.toggle('active', !isLogin);
   document.getElementById('ag-form-login').style.display    = isLogin ? 'block' : 'none';
   document.getElementById('ag-form-register').style.display = isLogin ? 'none'  : 'block';
+  document.getElementById('ag-title').textContent = isLogin
+    ? 'WELCOME BACK'
+    : 'READY TO LEVEL UP YOUR TRADING GAME?';
   agClearMsg();
 }
 
