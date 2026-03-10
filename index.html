@@ -1386,6 +1386,15 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
     border-bottom:1px solid var(--border);
   }
 
+  /* Save Trade button always reachable — sticky at modal bottom */
+  .modal-save-footer{
+    position:sticky;bottom:0;z-index:5;
+    background:var(--surface-solid);
+    padding:10px 0 4px;margin:0 -14px -20px;
+    padding-left:14px;padding-right:14px;
+    border-top:1px solid var(--border);
+  }
+
   /* ── Trade log: table hidden, mobile cards shown ── */
   .trade-table-wrap-desktop{display:none!important;}
   .trade-cards-mobile{display:flex!important;flex-direction:column;gap:8px;padding:4px 0;}
@@ -3053,7 +3062,7 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
           </div>
         </div>
       </div>
-      <div class="form-group full" style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+      <div class="form-group full modal-save-footer" style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
         <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
         <button class="btn btn-primary" id="save-btn" onclick="saveTrade()">Save Trade +10 XP</button>
       </div>
@@ -6454,7 +6463,12 @@ let seSaveTimer=null;
   updateTiltMeterUI();
   // sidebar editor removed
 
-  const onboarded=localStorage.getItem(LS.ONBOARDED);
+  // Check both generic and user-specific onboarding keys so desktop mode
+  // doesn't reset when user was onboarded on mobile (user-specific key)
+  const _initObKey = (typeof supabaseUser !== 'undefined' && supabaseUser)
+    ? 'traderow_onboarded_' + supabaseUser.id
+    : LS.ONBOARDED;
+  const onboarded = localStorage.getItem(_initObKey) || localStorage.getItem(LS.ONBOARDED);
   if(onboarded){
     $('onboarding-overlay').classList.add('hidden');
     renderDashboard();
@@ -6521,7 +6535,7 @@ function agClearMsg() {
 function agProceedAfterAuth() {
   document.getElementById('auth-gate').classList.add('hidden');
   const _obKey = supabaseUser ? "traderow_onboarded_" + supabaseUser.id : "traderow_onboarded";
-  const onboarded = localStorage.getItem(_obKey);
+  const onboarded = localStorage.getItem(_obKey) || localStorage.getItem(LS.ONBOARDED);
   if (!onboarded) {
     // Show onboarding overlay (remove hidden if it was added)
     const ob = document.getElementById('onboarding-overlay');
@@ -6534,7 +6548,7 @@ function agProceedAfterAuth() {
 function agSkip() {
   document.getElementById('auth-gate').classList.add('hidden');
   const _obKey = supabaseUser ? "traderow_onboarded_" + supabaseUser.id : "traderow_onboarded";
-  const onboarded = localStorage.getItem(_obKey);
+  const onboarded = localStorage.getItem(_obKey) || localStorage.getItem(LS.ONBOARDED);
   if (!onboarded) {
     const ob = document.getElementById('onboarding-overlay');
     if (ob) ob.classList.remove('hidden');
@@ -6730,7 +6744,7 @@ supabaseClient.auth.getSession().then(({ data }) => {
     document.getElementById("auth-gate").classList.add("hidden");
     // Show onboarding for this user if not yet completed
     const _obKey = "traderow_onboarded_" + data.session.user.id;
-    if (!localStorage.getItem(_obKey)) {
+    if (!localStorage.getItem(_obKey) && !localStorage.getItem(LS.ONBOARDED)) {
       const ob = document.getElementById("onboarding-overlay");
       if (ob) ob.classList.remove("hidden");
     }
