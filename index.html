@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>TradeROW v5 — Trader System</title>
+<title>TradeROW — Multi-Market Trading Journal</title>
 
 <!-- ══ PWA MANIFEST & THEME ══ -->
 <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22TradeROW%20%E2%80%94%20Trader%20System%22,%22short_name%22:%22TradeROW%22,%22description%22:%22Gamified%20trading%20journal%20with%20discipline%20tracking%20and%20performance%20analytics.%22,%22start_url%22:%22.%2F%22,%22display%22:%22standalone%22,%22background_color%22:%22%230A0F14%22,%22theme_color%22:%22%2300BFFF%22,%22orientation%22:%22any%22}">
@@ -748,6 +748,15 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
 .mtype-badge.crypto{color:#9C6FFF;border-color:rgba(156,111,255,0.35);background:rgba(156,111,255,0.08);}
 .mtype-badge.forex{color:#00BFFF;border-color:rgba(0,191,255,0.35);background:rgba(0,191,255,0.08);}
 .mtype-badge.indices{color:#FFD700;border-color:rgba(255,215,0,0.35);background:rgba(255,215,0,0.08);}
+.mtype-badge.stocks{color:#00FF88;border-color:rgba(0,255,136,0.35);background:rgba(0,255,136,0.08);}
+.mtype-badge.commodities{color:#FF9A3C;border-color:rgba(255,154,60,0.35);background:rgba(255,154,60,0.08);}
+.mtype-badge.metals{color:#C0C0C0;border-color:rgba(192,192,192,0.35);background:rgba(192,192,192,0.08);}
+.mtype-badge.energy{color:#FF6B35;border-color:rgba(255,107,53,0.35);background:rgba(255,107,53,0.08);}
+.mtype-badge.etfs{color:#4FC3F7;border-color:rgba(79,195,247,0.35);background:rgba(79,195,247,0.08);}
+.mtype-badge.futures{color:#BA68C8;border-color:rgba(186,104,200,0.35);background:rgba(186,104,200,0.08);}
+.mtype-badge.options{color:#F06292;border-color:rgba(240,98,146,0.35);background:rgba(240,98,146,0.08);}
+.mtype-badge.bonds{color:#80CBC4;border-color:rgba(128,203,196,0.35);background:rgba(128,203,196,0.08);}
+.mtype-badge.synthetic{color:#E040FB;border-color:rgba(224,64,251,0.35);background:rgba(224,64,251,0.08);}
 
 .risk-meter{height:3px;background:rgba(0,191,255,0.08);margin-top:4px;overflow:hidden;}
 .risk-fill{height:100%;transition:width 0.5s;}
@@ -1556,14 +1565,10 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
     <div class="ob-step active" id="ob-step-1">
       <div class="ob-section-title">Step 01 — Trader Identity &amp; Class</div>
       <div style="font-family:var(--font-b);font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6;">Enter your trader name and username, then choose your primary trading style. This defines your <span style="color:var(--accent);">Trader Class</span> and affects how your performance metrics are evaluated.</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:16px;">
         <div class="ob-form-group">
           <div class="ob-label" style="margin-bottom:5px;">Trader Name</div>
           <input class="ob-input" type="text" id="ob-trader-name" placeholder="Enter your name..." maxlength="40">
-        </div>
-        <div class="ob-form-group">
-          <div class="ob-label" style="margin-bottom:5px;">Username</div>
-          <input class="ob-input" type="text" id="ob-trader-handle" placeholder="@handle" maxlength="30">
         </div>
       </div>
       <div class="ob-error" id="err-1-identity">⚠ IDENTITY REQUIRED — Enter your trader name to proceed.</div>
@@ -2410,7 +2415,7 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
             </div>
             <input type="file" id="avatar-upload" accept="image/*" style="display:none;" onchange="handleAvatarUpload(this)">
             <div id="profile-name-display" style="font-family:var(--font-d);font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px;"></div>
-            <div id="profile-handle-display" style="font-family:var(--font-b);font-size:11px;color:var(--muted);margin-bottom:8px;"></div>
+
             <!-- Class Badges -->
             <div style="display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;">
               <div id="profile-main-class-badge" style="display:inline-block;background:rgba(0,191,255,0.08);border:1px solid rgba(0,191,255,0.3);color:var(--accent);font-family:var(--font-d);font-size:8px;font-weight:700;padding:3px 10px;text-transform:uppercase;letter-spacing:1px;">—</div>
@@ -2927,7 +2932,7 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
     <div id="modal-section-exec" class="form-grid">
       <div class="form-group"><label>Entry Time</label><input type="datetime-local" id="f-entry-time" oninput="calcPreview();autoDetectSession()"></div>
       <div class="form-group"><label>Exit Time</label><input type="datetime-local" id="f-exit-time" oninput="calcPreview()"></div>
-      <div class="form-group"><label>Pair</label><input type="text" id="f-pair" placeholder="e.g. BTCUSDT" oninput="this.value=this.value.toUpperCase();autoDetectMarket()"></div>
+      <div class="form-group"><label>Pair / Symbol <span style="font-size:9px;color:var(--muted);">Forex · Crypto · Stocks · Indices</span></label><input type="text" id="f-pair" placeholder="e.g. EURUSD, BTCUSDT, AAPL, NAS100" oninput="this.value=this.value.toUpperCase();autoDetectMarket()"></div>
       <div class="form-group"><label>Direction</label><select id="f-direction" onchange="calcPreview()"><option>Long</option><option>Short</option></select></div>
       <div class="form-group"><label>Entry Price</label><input type="number" id="f-entry" placeholder="0.00" step="any" oninput="calcPreview()"></div>
       <div class="form-group"><label>Exit Price <span style="font-size:9px;color:var(--muted);">(or use TP rows ↓)</span></label><input type="number" id="f-exit" placeholder="0.00 (optional if TPs set)" step="any" oninput="calcPreview()"></div>
@@ -2956,11 +2961,20 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
         </select>
       </div>
       <div class="form-group">
-        <label>Market Type <span style="font-size:9px;color:var(--accent);">auto-detected</span></label>
-        <select id="f-market-type">
-          <option value="crypto">Crypto</option>
+        <label>Asset Category <span style="font-size:9px;color:var(--accent);">auto-detected</span></label>
+        <select id="f-market-type" onchange="calcPreview()">
           <option value="forex">Forex</option>
+          <option value="crypto">Crypto</option>
+          <option value="stocks">Stocks</option>
+          <option value="commodities">Commodities</option>
           <option value="indices">Indices</option>
+          <option value="metals">Metals</option>
+          <option value="energy">Energy</option>
+          <option value="etfs">ETFs</option>
+          <option value="futures">Futures</option>
+          <option value="options">Options</option>
+          <option value="bonds">Bonds</option>
+          <option value="synthetic">Synthetic Indices</option>
         </select>
       </div>
       <div class="form-group">
@@ -3025,7 +3039,6 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
     <div class="modal-title"><span>Edit Profile</span><button class="close-btn" onclick="closeProfileEdit()">✕</button></div>
     <div class="form-grid">
       <div class="form-group"><label>Display Name</label><input type="text" id="pe-name" placeholder="Name or alias"></div>
-      <div class="form-group"><label>Handle</label><input type="text" id="pe-handle" placeholder="@handle"></div>
       <div class="form-group full"><label>Bio</label><textarea id="pe-bio" placeholder="About yourself as a trader..." style="min-height:55px;"></textarea></div>
       <div class="form-group full"><label>Trading Strategy Notes</label><textarea id="pe-strategy" placeholder="Describe your strategy, setups, rules..." style="min-height:100px;"></textarea></div>
       <div class="form-group full" style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;">
@@ -4083,7 +4096,6 @@ function obNext(step) {
     else{const ie=$("err-1-identity");if(ie)ie.classList.remove("show");}
     if(!onboardState.mainClass||!onboardState.subClass) { errEl.classList.add('show'); return; }
     onboardState.traderName=traderName;
-    onboardState.traderHandle=($("ob-trader-handle")?.value||"").trim();
   } else if(step===2) {
     const val=parseFloat($('capital-custom-input').value)||0;
     if(!val||val<=0) { errEl.classList.add('show'); return; }
@@ -4139,12 +4151,12 @@ function finalizeOnboarding() {
   saveRiskProfile({riskPT:onboardState.riskPT,riskDaily:onboardState.riskDaily,riskWeekly:onboardState.riskWeekly,pain:onboardState.pain});
   const profile = (() => { try{return JSON.parse(localStorage.getItem(LS.PROFILE))||{};}catch{return {};} })();
   if(onboardState.traderName) profile.name=onboardState.traderName;
-  if(onboardState.traderHandle) profile.handle=onboardState.traderHandle;
   profile.mainClass=onboardState.mainClass; profile.subClass=onboardState.subClass;
   profile.strategy=onboardState.strategy+(onboardState.stratCustom?'\n\n'+onboardState.stratCustom:'');
   profile.strategySecondary=onboardState.stratSecondary||'';
   localStorage.setItem(LS.PROFILE, JSON.stringify(profile));
-  localStorage.setItem(LS.ONBOARDED, '1');
+  const _obSaveKey = (typeof supabaseUser !== "undefined" && supabaseUser) ? "traderow_onboarded_" + supabaseUser.id : LS.ONBOARDED;
+  localStorage.setItem(_obSaveKey, "1");
   applyTheme(onboardState.theme||'male');
 
   document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('active'));
@@ -4289,13 +4301,13 @@ function closeModal(){ $('modal').classList.remove('open'); editId=null; }
 
 function openProfileEdit(){
   const p=(() => {try{return JSON.parse(localStorage.getItem(LS.PROFILE))||{};}catch{return {};}})();
-  $('pe-name').value=p.name||''; $('pe-handle').value=p.handle||''; $('pe-bio').value=p.bio||''; $('pe-strategy').value=p.strategy||'';
+  $('pe-name').value=p.name||''; $('pe-bio').value=p.bio||''; $('pe-strategy').value=p.strategy||'';
   $('profile-modal').classList.add('open');
 }
 function closeProfileEdit(){ $('profile-modal').classList.remove('open'); }
 function saveProfile(){
   const p=(() => {try{return JSON.parse(localStorage.getItem(LS.PROFILE))||{};}catch{return {};}})();
-  p.name=$('pe-name').value.trim(); p.handle=$('pe-handle').value.trim();
+  p.name=$("pe-name").value.trim();
   p.bio=$('pe-bio').value.trim(); p.strategy=$('pe-strategy').value.trim();
   localStorage.setItem(LS.PROFILE,JSON.stringify(p));
   closeProfileEdit(); renderProfilePage(); showToast('Profile saved');
@@ -4474,7 +4486,7 @@ function openPasteImport() {
       <div class="paste-import-box">
         <div style="font-family:var(--font-d);font-size:14px;font-weight:900;color:var(--accent);letter-spacing:2px;margin-bottom:4px;">PASTE IMPORT</div>
         <div style="font-family:var(--font-b);font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.6;">Paste raw trade history from your exchange. Supports formats: <em>Pair | Side | Size | Entry | Exit | PnL | Time</em></div>
-        <textarea id="paste-import-text" style="width:100%;height:140px;background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);font-family:monospace;font-size:11px;padding:10px;resize:vertical;" placeholder="BTCUSDT  Long  0.1  42000  43500  150  2024-01-15 09:30
+        <textarea id="paste-import-text" style="width:100%;height:140px;background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--text);font-family:monospace;font-size:11px;padding:10px;resize:vertical;" placeholder="EURUSD   Long  10000  1.0850  1.0920  70  2024-01-15 09:30
 EURUSD   Short  1000  1.0850  1.0820  30  2024-01-15 14:45
 ..."></textarea>
         <div id="paste-error" class="paste-error"></div>
@@ -4513,7 +4525,7 @@ function parsePasteImport() {
     // Heuristic: detect pair, side, size, entry, [exit], [pnl], [time]
     let pair='', dir='Long', size=0, entryP=0, exitP=0, pnl=null, timeStr='';
     // Find the pair (first alphabetic token)
-    const pairIdx=parts.findIndex(p=>/^[A-Za-z]{3,10}(USDT?|USD|BTC|ETH|JPY|EUR|GBP|\/)?[A-Za-z0-9]*$/i.test(p));
+    const pairIdx=parts.findIndex(p=>/^[A-Za-z]{2,10}([\/]?[A-Za-z]{2,6})?$/.test(p));
     if(pairIdx>=0){pair=parts[pairIdx].toUpperCase();}else{pair=parts[0].toUpperCase();}
     // Find direction
     const dirIdx=parts.findIndex(p=>/^(long|short|buy|sell)$/i.test(p));
@@ -4579,13 +4591,40 @@ function detectSession(isoTime) {
 
 // ─── MARKET TYPE DETECTION ──────────────────────────────────────
 function detectMarketType(pair) {
-  if(!pair) return 'crypto';
-  const p=pair.toUpperCase();
-  const forexPairs=['EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','NZDUSD','USDCHF','EURJPY','GBPJPY','EUR/USD','GBP/USD','USD/JPY','AUD/USD','USD/CAD','NZD/USD','USD/CHF','EUR/JPY','GBP/JPY'];
-  const indices=['SPX','NDX','NAS','DOW','DJI','FTSE','DAX','US30','US500','NAS100','SPX500','JP225','UK100','GER40'];
-  if(forexPairs.some(f=>p.includes(f.replace('/',''))||p===f)) return 'forex';
-  if(indices.some(i=>p.includes(i))) return 'indices';
-  return 'crypto';
+  if(!pair) return 'forex';
+  const p=pair.toUpperCase().replace('/','').replace('-','');
+  // Futures — /ES, /NQ, /CL, /GC, /SI etc.
+  if(pair.startsWith('/') || ['ESH','ESM','ESU','ESZ','NQH','NQM','NQU','NQZ','CLH','CLM','CLU','CLZ','GCH','GCM','GCQ','GCZ','ZCH','ZCM','ZCU','ZCZ','ESFUT','NQFUT','CLFUT','GCFUT'].some(x=>p.includes(x))) return 'futures';
+  if(p.match(/^[A-Z]{2,3}[FGHJKMNQUVXZ]\d{1,2}$/)) return 'futures'; // standard futures codes e.g. ESZ4
+  // Options — contain C or P strike patterns
+  if(p.match(/[A-Z]+\d{6}[CP]\d+$/)) return 'options';
+  // Bonds
+  if(['TNOTE','TBOND','BUND','GILT','TNOTE','TLT','IEF','SHY','ZN','ZB','ZT','ZF','BONDFUT','10Y','2Y','30Y','T10Y','T30Y','TNX'].some(x=>p.includes(x)||p===x)) return 'bonds';
+  // Forex — major, minor, exotic pairs
+  const forexMajors=['EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','NZDUSD','USDCHF','EURJPY','GBPJPY','EURGBP','EURAUD','EURCAD','EURCHF','EURNZD','GBPAUD','GBPCAD','GBPCHF','GBPNZD','AUDJPY','CADJPY','CHFJPY','NZDJPY','AUDCAD','AUDCHF','AUDNZD','CADCHF','NZDCAD','NZDCHF','USDMXN','USDZAR','USDTRY','USDSEK','USDNOK','USDDKK','USDSGD','USDHKD','USDCNH','USDPLN','EURMXN','EURTRY'];
+  if(forexMajors.includes(p)) return 'forex';
+  if(/^[A-Z]{6}$/.test(p) && !['BTCUSD','ETHUSD','BNBUSD','SOLUSD','ADAUSD','DOTUSD','LINKUSD','MATICUSD'].some(x=>p.startsWith(x.slice(0,3)))) {
+    const fiatCodes=['USD','EUR','GBP','JPY','AUD','CAD','CHF','NZD','SEK','NOK','DKK','SGD','HKD','CNH','CNY','MXN','ZAR','TRY','PLN','HUF','CZK','ILS'];
+    if(fiatCodes.some(c=>p.startsWith(c)) && fiatCodes.some(c=>p.endsWith(c))) return 'forex';
+  }
+  // Metals
+  if(['XAUUSD','XAGUSD','XPTUSD','XPDUSD','GOLD','SILVER','XAUEUR','XAUJPY','XAU','XAG','GLD','SLV'].some(x=>p.includes(x)||p===x)) return 'metals';
+  // Energy
+  if(['WTI','USOIL','UKOIL','BRENT','NGAS','NATGAS','XNG','XOIL','CL','NG','HO','RB','CRUDE','OIL'].some(x=>p.includes(x)||p===x)) return 'energy';
+  // Commodities
+  if(['WHEAT','CORN','SOY','SOYBEAN','COCOA','COFFEE','SUGAR','COTTON','LUMBER','COPPER','XCU'].some(x=>p.includes(x)||p===x)) return 'commodities';
+  // Indices
+  if(['SPX','NDX','NAS','DOW','DJI','FTSE','DAX','US30','US500','NAS100','SPX500','JP225','UK100','GER40','AUS200','HK50','EU50','FRA40','SPA35','DJIA','SP500','RUSSELL','RUT','VIX','NIKKEI','ASX','USTEC','US100','W20','US2000','CN50','STOXX'].some(i=>p.includes(i))) return 'indices';
+  // Synthetic indices
+  if(['BOOM','CRASH','STEP','VOLATILITY','VOL75','VOL25','VOL100','VOL10','VOL50','VOL200','JUMP','RANGE','DRIFT'].some(i=>p.includes(i))) return 'synthetic';
+  // ETFs
+  if(['SPY','QQQ','IWM','GLD','SLV','USO','VTI','VOO','ARKK','ARKG','IEMG','EEM','XLF','XLK','XLE','XLV','GDX','GDXJ','TLT','LQD','HYG','BITO'].includes(p)) return 'etfs';
+  // Crypto — USDT/USDC/BTC/ETH pairs
+  if(p.endsWith('USDT')||p.endsWith('USDC')||p.endsWith('BUSD')||p.endsWith('BTC')||p.endsWith('ETH')||p.endsWith('BNB')||['BTC','ETH','BNB','SOL','ADA','DOT','LINK','MATIC','XRP','DOGE','SHIB','AVAX','UNI','ATOM','LTC','FTM','NEAR','APT','ARB','OP'].some(c=>p.startsWith(c))) return 'crypto';
+  // Stocks — known tickers or short uppercase
+  if(['AAPL','TSLA','NVDA','AMZN','GOOGL','GOOG','META','MSFT','NFLX','AMD','INTC','BABA','DIS','PYPL','UBER','LYFT','COIN','HOOD','GME','AMC','PLTR','RIVN','LCID','SOFI','RBLX','SNAP','TWTR','JPM','GS','BAC','WFC','V','MA','PYPL','SQ','ROKU','ZM','SHOP'].includes(p)) return 'stocks';
+  if(/^[A-Z]{1,5}$/.test(p)) return 'stocks';
+  return 'forex';
 }
 
 // ─── COLLECT TP ROWS ────────────────────────────────────────────
@@ -4759,8 +4798,8 @@ function saveTrade(){
     showToast(`⚠ Risk violation: ${riskPct.toFixed(1)}% used vs ${riskProfile.riskPT}% limit`, true);
   }
   save(); checkAutoQuests(); checkTiltConditions(); renderAll();
-  // Sync new trades to cloud if logged in
-  if (!editId && typeof syncTradeToSupabase === 'function') syncTradeToSupabase(trade);
+  // Sync to cloud (both new and edited trades)
+  if (typeof syncTradeToSupabase === 'function') syncTradeToSupabase(trade);
   closeModal();
   showToast(editId?'Trade updated ✓':'Trade logged +10 XP 🎯');
 }
@@ -5174,7 +5213,7 @@ function renderProfilePage(){
   if(p.avatar&&imgEl){imgEl.src=p.avatar;imgEl.style.display='block';if(initEl)initEl.style.display='none';}
   else{if(imgEl)imgEl.style.display='none';if(initEl){initEl.style.display='flex';initEl.textContent=(p.name||'?').slice(0,2).toUpperCase();}}
   if($('profile-name-display'))$('profile-name-display').textContent=p.name||'Trader';
-  if($('profile-handle-display'))$('profile-handle-display').textContent=p.handle||'@unknown';
+
   if($('profile-bio-display'))$('profile-bio-display').textContent=p.bio||'No bio set.';
   if($('profile-main-class-badge'))$('profile-main-class-badge').textContent=p.mainClass||'—';
   if($('profile-sub-class-badge'))$('profile-sub-class-badge').textContent=p.subClass||'—';
@@ -5888,7 +5927,8 @@ self.addEventListener('message', e => {
   if(actionParam === 'log'){
     window.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => {
-        const onboarded = localStorage.getItem('traderow_onboarded');
+        const _obKey = supabaseUser ? "traderow_onboarded_" + supabaseUser.id : "traderow_onboarded";
+  const onboarded = localStorage.getItem(_obKey);
         if(onboarded) openLogMethodSelector && openLogMethodSelector();
       }, 800);
     });
@@ -5896,7 +5936,8 @@ self.addEventListener('message', e => {
   if(pageParam){
     window.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => {
-        const onboarded = localStorage.getItem('traderow_onboarded');
+        const _obKey = supabaseUser ? "traderow_onboarded_" + supabaseUser.id : "traderow_onboarded";
+  const onboarded = localStorage.getItem(_obKey);
         if(onboarded && typeof showPage === 'function') showPage(pageParam);
       }, 600);
     });
@@ -6185,7 +6226,8 @@ function agClearMsg() {
 // After successful auth → decide what to show
 function agProceedAfterAuth() {
   document.getElementById('auth-gate').classList.add('hidden');
-  const onboarded = localStorage.getItem('traderow_onboarded');
+  const _obKey = supabaseUser ? "traderow_onboarded_" + supabaseUser.id : "traderow_onboarded";
+  const onboarded = localStorage.getItem(_obKey);
   if (!onboarded) {
     // Show onboarding overlay (remove hidden if it was added)
     const ob = document.getElementById('onboarding-overlay');
@@ -6197,7 +6239,8 @@ function agProceedAfterAuth() {
 // Skip / offline mode
 function agSkip() {
   document.getElementById('auth-gate').classList.add('hidden');
-  const onboarded = localStorage.getItem('traderow_onboarded');
+  const _obKey = supabaseUser ? "traderow_onboarded_" + supabaseUser.id : "traderow_onboarded";
+  const onboarded = localStorage.getItem(_obKey);
   if (!onboarded) {
     const ob = document.getElementById('onboarding-overlay');
     if (ob) ob.classList.remove('hidden');
@@ -6230,7 +6273,7 @@ async function agRegister() {
   if (password !== confirm)  { agMsg('Passwords do not match.', true); return; }
   if (password.length < 6)   { agMsg('Password must be at least 6 characters.', true); return; }
   agMsg('Creating account…', false);
-  const { data, error } = await supabaseClient.auth.signUp({ email, password });
+  const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: "https://traderowjournal.github.io/TradeRow/" } });
   if (error) { agMsg('Sign up failed: ' + error.message, true); return; }
   // Supabase may auto-confirm or require email verification
   if (data.session) {
@@ -6277,7 +6320,16 @@ function updateAuthUI(user) {
 async function logout() {
   await supabaseClient.auth.signOut();
   updateAuthUI(null);
-  showToast('Logged out');
+  trades = [];
+  save();
+  renderAll();
+  const gate = document.getElementById("auth-gate");
+  if (gate) gate.classList.remove("hidden");
+  const ob = document.getElementById("onboarding-overlay");
+  if (ob) ob.classList.add("hidden");
+  agSwitchTab("login");
+  agClearMsg();
+  showToast("Logged out successfully");
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -6303,6 +6355,7 @@ async function syncTradesFromCloud() {
       timestamp: ct.created_at,
       pair: ct.symbol || ct.pair || 'UNKNOWN',
       direction: ct.trade_type === 'long' ? 'long' : 'short',
+      market_type: ct.asset_category || detectMarketType(ct.symbol || ct.pair || ''),
       entry: ct.entry_price || 0,
       pnl: ct.pnl || 0,
       netPnl: ct.pnl || 0,
@@ -6339,6 +6392,7 @@ async function syncTradeToSupabase(trade) {
       local_id:         trade.id,
       symbol:           trade.pair,
       trade_type:       trade.direction,
+      asset_category:   trade.market_type || detectMarketType(trade.pair),
       entry_price:      trade.entry || trade.entryPrice || 0,
       exit_price:       trade.exitPrice || trade.effectiveExit || 0,
       position_size:    trade.posSize || trade.position_size || 0,
@@ -6376,20 +6430,33 @@ async function syncAllLocalToCloud() {
 // ─────────────────────────────────────────────────────────────
 supabaseClient.auth.getSession().then(({ data }) => {
   if (data.session) {
-    // Already logged in — skip gate and go straight to app/onboarding
+    // Already logged in — skip gate
     updateAuthUI(data.session.user);
-    document.getElementById('auth-gate').classList.add('hidden');
+    document.getElementById("auth-gate").classList.add("hidden");
+    // Show onboarding for this user if not yet completed
+    const _obKey = "traderow_onboarded_" + data.session.user.id;
+    if (!localStorage.getItem(_obKey)) {
+      const ob = document.getElementById("onboarding-overlay");
+      if (ob) ob.classList.remove("hidden");
+    }
     syncTradesFromCloud();
   } else {
-    // No session — show auth gate (hide onboarding until after auth)
-    const ob = document.getElementById('onboarding-overlay');
-    if (ob) ob.classList.add('hidden');
-    // auth-gate is already visible (no hidden class by default)
+    // No session — show auth gate, hide onboarding
+    const ob = document.getElementById("onboarding-overlay");
+    if (ob) ob.classList.add("hidden");
   }
 });
 
 supabaseClient.auth.onAuthStateChange((event, session) => {
   updateAuthUI(session ? session.user : null);
+  if (event === "SIGNED_OUT") {
+    trades = []; save(); renderAll();
+    const gate = document.getElementById("auth-gate");
+    if (gate) gate.classList.remove("hidden");
+    const ob = document.getElementById("onboarding-overlay");
+    if (ob) ob.classList.add("hidden");
+    agSwitchTab("login"); agClearMsg();
+  }
 });
 </script>
 </body>
