@@ -146,6 +146,45 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(0,191,255,0.04) 0%,transparent 70%),radial-gradient(ellipse 40% 30% at 100% 100%,rgba(0,80,160,0.05) 0%,transparent 60%);pointer-events:none;z-index:0;}
 
 /* ══════ ONBOARDING OVERLAY ══════ */
+/* ─── AUTH GATE ─────────────────────────────────────────── */
+#auth-gate{
+  position:fixed;inset:0;z-index:2000;
+  background:rgba(0,0,0,0.97);
+  display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(12px);
+  transition:opacity 0.35s;
+}
+#auth-gate.hidden{display:none;}
+.ag-container{
+  width:min(420px,94vw);
+  background:var(--surface-solid);
+  border:1px solid var(--border-bright);
+  border-top:3px solid var(--accent);
+  position:relative;
+  clip-path:polygon(16px 0%,calc(100% - 16px) 0%,100% 16px,100% 100%,0% 100%,0% 16px);
+  padding:32px 28px 28px;
+}
+.ag-container::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--accent),#00E5FF,var(--accent),transparent);box-shadow:0 0 20px rgba(0,191,255,0.6);}
+.ag-label{font-family:var(--font-d);font-size:8px;color:var(--muted);letter-spacing:4px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+.ag-label::before,.ag-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--border-bright));}
+.ag-title{font-family:var(--font-d);font-size:20px;font-weight:700;color:var(--text);text-align:center;letter-spacing:3px;margin-bottom:6px;}
+.ag-sub{font-family:var(--font-b);font-size:11px;color:var(--text-dim);text-align:center;margin-bottom:24px;line-height:1.5;}
+.ag-tabs{display:flex;gap:0;margin-bottom:20px;border:1px solid var(--border);}
+.ag-tab{flex:1;padding:8px;font-family:var(--font-d);font-size:9px;font-weight:700;letter-spacing:2px;color:var(--muted);cursor:pointer;border:none;background:transparent;transition:all 0.2s;}
+.ag-tab.active{background:var(--accent);color:#000;}
+.ag-field{width:100%;padding:10px 12px;background:rgba(0,0,0,0.5);border:1px solid var(--border);border-bottom:2px solid var(--border);color:var(--text);font-family:var(--font-b);font-size:13px;outline:none;margin-bottom:10px;box-sizing:border-box;transition:border-color 0.2s;}
+.ag-field:focus{border-bottom-color:var(--accent);}
+.ag-btn{width:100%;padding:11px;font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:2px;cursor:pointer;border:none;margin-top:4px;transition:opacity 0.2s;}
+.ag-btn:hover{opacity:0.85;}
+.ag-btn-primary{background:var(--accent);color:#000;}
+.ag-btn-secondary{background:transparent;color:var(--accent);border:1px solid var(--accent)!important;border-left:none!important;margin-top:8px;}
+.ag-skip{margin-top:16px;text-align:center;font-family:var(--font-b);font-size:10px;color:var(--muted);cursor:pointer;text-decoration:underline;}
+.ag-skip:hover{color:var(--text-dim);}
+.ag-msg{text-align:center;padding:12px;font-family:var(--font-b);font-size:12px;border:1px solid var(--border);margin-top:8px;display:none;}
+.ag-msg.show{display:block;}
+.ag-msg.ok{color:var(--win);border-color:rgba(0,255,127,0.3);}
+.ag-msg.err{color:var(--loss);border-color:rgba(255,76,76,0.3);}
+
 #onboarding-overlay{
   position:fixed;inset:0;z-index:1000;
   background:rgba(0,0,0,0.95);
@@ -1455,6 +1494,42 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
 <!-- ══════════════════════════════════════ -->
 <!--           ONBOARDING OVERLAY          -->
 <!-- ══════════════════════════════════════ -->
+<!-- ══ AUTH GATE — shown before everything else ══ -->
+<div id="auth-gate">
+  <div class="ag-container">
+    <div class="ag-label">TradeROW System v1.0</div>
+    <div class="ag-title">WELCOME BACK</div>
+    <div class="ag-sub">Sign in to sync your trades to the cloud.<br>Your data stays local if you skip.</div>
+
+    <!-- Tab switcher -->
+    <div class="ag-tabs">
+      <button class="ag-tab active" id="ag-tab-login" onclick="agSwitchTab('login')">LOG IN</button>
+      <button class="ag-tab" id="ag-tab-register" onclick="agSwitchTab('register')">REGISTER</button>
+    </div>
+
+    <!-- Login form -->
+    <div id="ag-form-login">
+      <input id="ag-email" class="ag-field" type="email" placeholder="Email address" autocomplete="email">
+      <input id="ag-password" class="ag-field" type="password" placeholder="Password" autocomplete="current-password">
+      <button class="ag-btn ag-btn-primary" onclick="agLogin()">LOG IN →</button>
+    </div>
+
+    <!-- Register form -->
+    <div id="ag-form-register" style="display:none;">
+      <input id="ag-reg-email" class="ag-field" type="email" placeholder="Email address" autocomplete="email">
+      <input id="ag-reg-password" class="ag-field" type="password" placeholder="Password (min 6 chars)" autocomplete="new-password">
+      <input id="ag-reg-confirm" class="ag-field" type="password" placeholder="Confirm password" autocomplete="new-password">
+      <button class="ag-btn ag-btn-primary" onclick="agRegister()">CREATE ACCOUNT →</button>
+    </div>
+
+    <!-- Message area -->
+    <div id="ag-msg" class="ag-msg"></div>
+
+    <!-- Skip / offline mode -->
+    <div class="ag-skip" onclick="agSkip()">Continue without account (offline mode)</div>
+  </div>
+</div>
+
 <div id="onboarding-overlay">
 <div class="ob-container">
   <div class="ob-header">
@@ -2282,24 +2357,13 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
     </div>
 
     <!-- ══ CLOUD SYNC AUTH BOX ══ -->
-    <div id="authBox" style="padding:14px 16px;margin:0 16px 10px;background:var(--surface-solid);border:1px solid var(--border);border-left:3px solid var(--accent);position:relative;">
-      <div style="font-family:var(--font-d);font-size:9px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px;">
-        <span>☁</span> Cloud Sync
-      </div>
-      <!-- Login fields -->
-      <div id="authFields" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-        <input id="authEmail" placeholder="Email" type="email" style="flex:1;min-width:160px;padding:7px 10px;background:rgba(0,0,0,0.4);border:1px solid var(--border);color:var(--text);font-family:var(--font-b);font-size:12px;outline:none;">
-        <input id="authPassword" placeholder="Password" type="password" style="flex:1;min-width:140px;padding:7px 10px;background:rgba(0,0,0,0.4);border:1px solid var(--border);color:var(--text);font-family:var(--font-b);font-size:12px;outline:none;">
-        <button onclick="login()" style="padding:7px 14px;background:var(--accent);color:#000;border:none;cursor:pointer;font-family:var(--font-d);font-size:9px;font-weight:700;letter-spacing:1px;">LOGIN</button>
-        <button onclick="signup()" style="padding:7px 14px;background:transparent;color:var(--accent);border:1px solid var(--accent);cursor:pointer;font-family:var(--font-d);font-size:9px;font-weight:700;letter-spacing:1px;">SIGN UP</button>
-      </div>
-      <!-- Logged in state -->
-      <div id="authStatus" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;">
-        <span style="font-size:11px;color:var(--win);">● CONNECTED</span>
-        <span id="authUserEmail" style="font-family:var(--font-b);font-size:12px;color:var(--text-dim);flex:1;"></span>
-        <button onclick="syncTradesFromCloud()" style="padding:6px 12px;background:transparent;color:var(--accent);border:1px solid var(--border);cursor:pointer;font-family:var(--font-d);font-size:8px;letter-spacing:1px;">↓ SYNC</button>
-        <button onclick="logout()" style="padding:6px 12px;background:transparent;color:var(--loss);border:1px solid rgba(255,76,76,0.3);cursor:pointer;font-family:var(--font-d);font-size:8px;letter-spacing:1px;">LOGOUT</button>
-      </div>
+    <div id="authBox" style="padding:10px 16px;margin:0 16px 10px;background:var(--surface-solid);border:1px solid var(--border);border-left:3px solid var(--accent);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span style="font-family:var(--font-d);font-size:8px;color:var(--accent);letter-spacing:2px;">☁ CLOUD SYNC</span>
+      <span id="authSyncStatus" style="font-family:var(--font-b);font-size:11px;color:var(--muted);flex:1;">Not connected</span>
+      <span id="authUserEmail" style="font-family:var(--font-b);font-size:11px;color:var(--text-dim);display:none;"></span>
+      <button id="authSyncBtn" onclick="syncTradesFromCloud()" style="display:none;padding:5px 10px;background:transparent;color:var(--accent);border:1px solid var(--border);cursor:pointer;font-family:var(--font-d);font-size:8px;letter-spacing:1px;">↓ SYNC</button>
+      <button id="authSyncAllBtn" onclick="syncAllLocalToCloud()" style="display:none;padding:5px 10px;background:transparent;color:var(--text-dim);border:1px solid var(--border);cursor:pointer;font-family:var(--font-d);font-size:8px;letter-spacing:1px;">↑ PUSH</button>
+      <button id="authLogoutBtn" onclick="logout()" style="display:none;padding:5px 10px;background:transparent;color:var(--loss);border:1px solid rgba(255,76,76,0.3);cursor:pointer;font-family:var(--font-d);font-size:8px;letter-spacing:1px;">LOGOUT</button>
     </div>
 
     <!-- ══ ANALYTICS PAGE ══ -->
@@ -4698,7 +4762,7 @@ function saveTrade(){
   }
   save(); checkAutoQuests(); checkTiltConditions(); renderAll();
   // Sync new trades to cloud if logged in
-  if (!editId && typeof saveTradeToCloud === 'function') saveTradeToCloud(trade);
+  if (!editId && typeof syncTradeToSupabase === 'function') syncTradeToSupabase(trade);
   closeModal();
   showToast(editId?'Trade updated ✓':'Trade logged +10 XP 🎯');
 }
@@ -4706,6 +4770,7 @@ function saveTrade(){
 // ─── DELETE / EDIT ───────────────────────────────────────────────
 function deleteTrade(id){
   if(!confirm('Delete this trade?'))return;
+  if(typeof deleteCloudTrade === 'function') deleteCloudTrade(id);
   trades=trades.filter(t=>t.id!==id);
   save(); renderAll(); showToast('Trade deleted');
 }
@@ -6090,93 +6155,166 @@ const SUPABASE_URL = "https://hgzxeezrfsyjoltwevzu.supabase.co"
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhnenhlZXpyZnN5am9sdHdldnp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxMDExODUsImV4cCI6MjA4ODY3NzE4NX0.Jwo8ZCl9HOiHJkq27dIh7-ngoy_9EX4eSOre0ef82ts"
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-// ── Auth state tracking ───────────────────────────────────────
 let supabaseUser = null;
 
-function updateAuthUI(user) {
-  supabaseUser = user;
-  const authBox = document.getElementById("authBox");
-  const authFields = document.getElementById("authFields");
-  const authStatus = document.getElementById("authStatus");
-  if (!authBox) return;
-  if (user) {
-    if (authFields) authFields.style.display = "none";
-    if (authStatus) {
-      authStatus.style.display = "flex";
-      const emailEl = document.getElementById("authUserEmail");
-      if (emailEl) emailEl.textContent = user.email;
-    }
-  } else {
-    if (authFields) authFields.style.display = "flex";
-    if (authStatus) authStatus.style.display = "none";
+// ─────────────────────────────────────────────────────────────
+// AUTH GATE UI
+// ─────────────────────────────────────────────────────────────
+
+function agSwitchTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('ag-tab-login').classList.toggle('active', isLogin);
+  document.getElementById('ag-tab-register').classList.toggle('active', !isLogin);
+  document.getElementById('ag-form-login').style.display    = isLogin ? 'block' : 'none';
+  document.getElementById('ag-form-register').style.display = isLogin ? 'none'  : 'block';
+  agClearMsg();
+}
+
+function agMsg(text, isErr) {
+  const el = document.getElementById('ag-msg');
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'ag-msg show ' + (isErr ? 'err' : 'ok');
+}
+function agClearMsg() {
+  const el = document.getElementById('ag-msg');
+  if (el) { el.textContent=''; el.className='ag-msg'; }
+}
+
+// After successful auth → decide what to show
+function agProceedAfterAuth() {
+  document.getElementById('auth-gate').classList.add('hidden');
+  const onboarded = localStorage.getItem('traderow_onboarded');
+  if (!onboarded) {
+    // Show onboarding overlay (remove hidden if it was added)
+    const ob = document.getElementById('onboarding-overlay');
+    if (ob) ob.classList.remove('hidden');
+  }
+  // App is already rendered; nothing more needed
+}
+
+// Skip / offline mode
+function agSkip() {
+  document.getElementById('auth-gate').classList.add('hidden');
+  const onboarded = localStorage.getItem('traderow_onboarded');
+  if (!onboarded) {
+    const ob = document.getElementById('onboarding-overlay');
+    if (ob) ob.classList.remove('hidden');
   }
 }
 
-// ── Auth: Sign Up ─────────────────────────────────────────────
-async function signup() {
-  const email    = document.getElementById("authEmail").value.trim()
-  const password = document.getElementById("authPassword").value
-  if (!email || !password) { showToast("Enter email and password", true); return; }
-  const { data, error } = await supabaseClient.auth.signUp({ email, password })
-  if (error) { showToast("Sign up failed: " + error.message, true); return; }
-  showToast("Account created! Check your email to confirm ✉️");
+// ── Auth Gate: Login ──────────────────────────────────────────
+async function agLogin() {
+  const email    = document.getElementById('ag-email').value.trim();
+  const password = document.getElementById('ag-password').value;
+  if (!email || !password) { agMsg('Enter your email and password.', true); return; }
+  agMsg('Logging in…', false);
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) { agMsg('Login failed: ' + error.message, true); return; }
+  updateAuthUI(data.user);
+  agMsg('Welcome back, ' + data.user.email + ' ✓', false);
+  setTimeout(() => {
+    agProceedAfterAuth();
+    syncTradesFromCloud();
+    showToast('Logged in — syncing trades ☁️');
+  }, 700);
 }
 
-// ── Auth: Login ───────────────────────────────────────────────
-async function login() {
-  const email    = document.getElementById("authEmail").value.trim()
-  const password = document.getElementById("authPassword").value
-  if (!email || !password) { showToast("Enter email and password", true); return; }
-  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password })
-  if (error) { showToast("Login failed: " + error.message, true); return; }
-  updateAuthUI(data.user);
-  showToast("Logged in — syncing trades ☁️");
-  syncTradesFromCloud();
+// ── Auth Gate: Register ───────────────────────────────────────
+async function agRegister() {
+  const email    = document.getElementById('ag-reg-email').value.trim();
+  const password = document.getElementById('ag-reg-password').value;
+  const confirm  = document.getElementById('ag-reg-confirm').value;
+  if (!email || !password) { agMsg('Enter your email and password.', true); return; }
+  if (password !== confirm)  { agMsg('Passwords do not match.', true); return; }
+  if (password.length < 6)   { agMsg('Password must be at least 6 characters.', true); return; }
+  agMsg('Creating account…', false);
+  const { data, error } = await supabaseClient.auth.signUp({ email, password });
+  if (error) { agMsg('Sign up failed: ' + error.message, true); return; }
+  // Supabase may auto-confirm or require email verification
+  if (data.session) {
+    // Auto-confirmed (email confirmation disabled in Supabase project)
+    updateAuthUI(data.user);
+    agMsg('Account created! Welcome, ' + data.user.email + ' ✓', false);
+    setTimeout(() => { agProceedAfterAuth(); }, 900);
+  } else {
+    agMsg('✉️ Check your email to confirm your account, then log in.', false);
+    setTimeout(() => agSwitchTab('login'), 3000);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// AUTH STATE + SIDEBAR SYNC STRIP
+// ─────────────────────────────────────────────────────────────
+
+function updateAuthUI(user) {
+  supabaseUser = user;
+  const statusEl   = document.getElementById('authSyncStatus');
+  const emailEl    = document.getElementById('authUserEmail');
+  const syncBtn    = document.getElementById('authSyncBtn');
+  const pushBtn    = document.getElementById('authSyncAllBtn');
+  const logoutBtn  = document.getElementById('authLogoutBtn');
+  if (!statusEl) return;
+  if (user) {
+    statusEl.textContent = '● CONNECTED';
+    statusEl.style.color = 'var(--win)';
+    if (emailEl)   { emailEl.textContent = user.email; emailEl.style.display = 'inline'; }
+    if (syncBtn)     syncBtn.style.display   = 'inline-block';
+    if (pushBtn)     pushBtn.style.display   = 'inline-block';
+    if (logoutBtn)   logoutBtn.style.display = 'inline-block';
+  } else {
+    statusEl.textContent = 'Not connected';
+    statusEl.style.color = '';
+    if (emailEl)   { emailEl.textContent = ''; emailEl.style.display = 'none'; }
+    if (syncBtn)     syncBtn.style.display   = 'none';
+    if (pushBtn)     pushBtn.style.display   = 'none';
+    if (logoutBtn)   logoutBtn.style.display = 'none';
+  }
 }
 
 // ── Auth: Logout ───────────────────────────────────────────────
 async function logout() {
-  await supabaseClient.auth.signOut()
+  await supabaseClient.auth.signOut();
   updateAuthUI(null);
-  showToast("Logged out");
+  showToast('Logged out');
 }
 
-// ── Trades: Sync from Cloud → Local ──────────────────────────
+// ─────────────────────────────────────────────────────────────
+// TRADE SYNC
+// ─────────────────────────────────────────────────────────────
+
 async function syncTradesFromCloud() {
   if (!supabaseUser) return;
   const { data, error } = await supabaseClient
-    .from("trades")
-    .select("*")
-    .eq("user_id", supabaseUser.id)
-    .order("created_at", { ascending: false })
-
-  if (error) { console.error("syncTradesFromCloud error:", error); return; }
+    .from('trades')
+    .select('*')
+    .eq('user_id', supabaseUser.id)
+    .order('created_at', { ascending: false });
+  if (error) { console.error('syncTradesFromCloud error:', error); return; }
   if (!data || data.length === 0) return;
-
-  // Map cloud trades to local format and merge (avoid duplicates by cloud_id)
   const existingCloudIds = new Set(trades.filter(t => t.cloud_id).map(t => t.cloud_id));
   let added = 0;
   data.forEach(ct => {
-    if (existingCloudIds.has(ct.id)) return; // already synced
+    if (existingCloudIds.has(ct.id)) return;
     trades.unshift({
       id: ct.local_id || (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random()),
       cloud_id: ct.id,
       timestamp: ct.created_at,
-      pair: ct.symbol || ct.pair || "UNKNOWN",
-      direction: ct.trade_type === "long" ? "long" : "short",
+      pair: ct.symbol || ct.pair || 'UNKNOWN',
+      direction: ct.trade_type === 'long' ? 'long' : 'short',
       entry: ct.entry_price || 0,
       pnl: ct.pnl || 0,
       netPnl: ct.pnl || 0,
       grossPnl: ct.pnl || 0,
-      result: ct.pnl > 0 ? "Win" : ct.pnl < 0 ? "Loss" : "BE",
-      notes: ct.notes || "",
+      result: ct.pnl > 0 ? 'Win' : ct.pnl < 0 ? 'Loss' : 'BE',
+      notes: ct.notes || '',
       tags: { psych: ct.emotion_tag ? [ct.emotion_tag] : [] },
       behaviors: ct.emotion_tag ? [ct.emotion_tag] : [],
       date: ct.created_at,
       riskAdherent: true,
       position_size: ct.position_size || 0,
       posSize: ct.position_size || 0,
-      strategy: ct.strategy || "",
+      strategy: ct.strategy || '',
       exitPrice: ct.exit_price || 0,
       entryPrice: ct.entry_price || 0,
       balanceAfter: 0, riskPct: 0, rrr: 0, totalFees: 0,
@@ -6187,16 +6325,15 @@ async function syncTradesFromCloud() {
   if (added > 0) {
     save();
     renderAll();
-    showToast(`☁️ Synced ${added} trade${added > 1 ? "s" : ""} from cloud`);
+    showToast(`☁️ Synced ${added} trade${added > 1 ? 's' : ''} from cloud`);
   }
 }
 
-// ── Trades: Save to Cloud (called after local save) ───────────
-async function saveTradeToCloud(trade) {
+async function syncTradeToSupabase(trade) {
   if (!supabaseUser) return;
   const { data, error } = await supabaseClient
-    .from("trades")
-    .insert([{
+    .from('trades')
+    .upsert([{
       user_id:          supabaseUser.id,
       local_id:         trade.id,
       symbol:           trade.pair,
@@ -6205,31 +6342,51 @@ async function saveTradeToCloud(trade) {
       exit_price:       trade.exitPrice || trade.effectiveExit || 0,
       position_size:    trade.posSize || trade.position_size || 0,
       pnl:              trade.netPnl || trade.pnl || 0,
-      strategy:         trade.strategy || (trade.tags?.setup?.[0] || ""),
-      notes:            trade.notes || "",
+      strategy:         trade.strategy || (trade.tags?.setup?.[0] || ''),
+      notes:            trade.notes || '',
       emotion_tag:      (trade.behaviors || trade.tags?.psych || [])[0] || null,
-      setup_quality:    null,
       discipline_score: trade.riskAdherent ? 10 : 5
-    }])
-  if (error) { console.warn("Cloud save error (trade still saved locally):", error.message); }
-  else {
-    // Store cloud id back on local trade
-    if (data && data[0]) {
-      const idx = trades.findIndex(t => t.id === trade.id);
-      if (idx > -1) { trades[idx].cloud_id = data[0].id; save(); }
-    }
+    }], { onConflict: 'local_id' });
+  if (error) { console.warn('Cloud save error (saved locally):', error.message); }
+  else if (data && data[0]) {
+    const idx = trades.findIndex(t => t.id === trade.id);
+    if (idx > -1) { trades[idx].cloud_id = data[0].id; save(); }
   }
 }
 
-// ── Init: check session on load ───────────────────────────────
+async function deleteCloudTrade(localId) {
+  if (!supabaseUser || !localId) return;
+  await supabaseClient.from('trades').delete().eq('local_id', localId).eq('user_id', supabaseUser.id);
+}
+
+async function syncAllLocalToCloud() {
+  if (!supabaseUser) { showToast('Log in first to push trades', true); return; }
+  if (!trades || trades.length === 0) { showToast('No local trades to push', true); return; }
+  showToast('Pushing ' + trades.length + ' trades…');
+  let ok = 0;
+  for (const t of trades) {
+    try { await syncTradeToSupabase(t); ok++; } catch(e) {}
+  }
+  showToast('☁️ Pushed ' + ok + ' trades to cloud');
+}
+
+// ─────────────────────────────────────────────────────────────
+// INIT: Check session on load — show auth gate if no session
+// ─────────────────────────────────────────────────────────────
 supabaseClient.auth.getSession().then(({ data }) => {
   if (data.session) {
+    // Already logged in — skip gate and go straight to app/onboarding
     updateAuthUI(data.session.user);
+    document.getElementById('auth-gate').classList.add('hidden');
     syncTradesFromCloud();
+  } else {
+    // No session — show auth gate (hide onboarding until after auth)
+    const ob = document.getElementById('onboarding-overlay');
+    if (ob) ob.classList.add('hidden');
+    // auth-gate is already visible (no hidden class by default)
   }
 });
 
-// Listen for auth changes
 supabaseClient.auth.onAuthStateChange((event, session) => {
   updateAuthUI(session ? session.user : null);
 });
