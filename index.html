@@ -974,9 +974,12 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
 /* ── LEADERBOARD ── */
 .lb-tab{font-family:var(--font-d);font-size:8px;letter-spacing:1.5px;padding:5px 12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);color:var(--muted);cursor:pointer;transition:all 0.2s;}
 .lb-tab.active,.lb-tab:hover{background:rgba(255,215,0,0.08);border-color:rgba(255,215,0,0.3);color:var(--gold);}
-.lb-row{display:grid;grid-template-columns:44px 1fr 70px 100px 90px 100px;align-items:center;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,0.03);font-family:var(--font-b);font-size:12px;transition:background 0.15s;}
+.lb-row{display:grid;grid-template-columns:44px 1fr 70px 90px 80px 90px 80px;align-items:center;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,0.03);font-family:var(--font-b);font-size:12px;transition:background 0.15s;}
 .lb-row:hover{background:rgba(255,255,255,0.02);}
 .lb-row.top3{background:rgba(255,215,0,0.03);}
+.lb-row.lb-me{background:rgba(255,215,0,0.05);}
+.lb-val{font-family:var(--font-d);font-size:11px;font-weight:700;color:var(--text);}
+.lb-rank-cell{font-family:var(--font-d);font-size:14px;font-weight:900;}
 .lb-pos{font-family:var(--font-d);font-size:11px;font-weight:900;color:var(--muted);}
 .lb-pos.gold-pos{color:var(--gold);text-shadow:var(--gold-glow);}
 .lb-trader-name{font-weight:600;letter-spacing:0.3px;}
@@ -2747,12 +2750,25 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
     <div class="si-page-header" style="border-color:rgba(255,215,0,0.3);background:linear-gradient(135deg,rgba(255,215,0,0.04),rgba(255,165,0,0.02));">
       <div class="si-title-row">
         <div style="font-family:var(--font-d);font-size:20px;font-weight:900;color:var(--gold);text-shadow:var(--gold-glow);letter-spacing:2px;">LEADERBOARDS</div>
-        <div class="si-badge-cs" style="background:rgba(255,215,0,0.12);border-color:rgba(255,215,0,0.4);color:var(--gold);">COMING SOON</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div style="background:rgba(0,255,127,0.12);border:1px solid rgba(0,255,127,0.4);color:var(--win);font-family:var(--font-d);font-size:7px;font-weight:700;letter-spacing:1.5px;padding:3px 10px;">● LIVE</div>
+          <button class="btn btn-ghost" onclick="fetchLeaderboard()" style="font-size:9px;padding:3px 10px;">↻ REFRESH</button>
+        </div>
       </div>
       <div class="si-subtitle" style="color:rgba(255,215,0,0.5);">TradeROW Global Ranking System</div>
       <div style="margin-top:10px;font-family:var(--font-b);font-size:12px;color:var(--text-dim);line-height:1.6;max-width:620px;">
-        The global leaderboard will rank all registered TradeROW traders by rank tier, discipline score, and performance consistency. 
-        Your position is earned — not bought.
+        Real-time rankings across all registered TradeROW traders. Your stats update automatically after every trade.
+      </div>
+      <!-- Opt-in toggle -->
+      <div style="margin-top:12px;display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(255,215,0,0.03);border:1px solid rgba(255,215,0,0.12);">
+        <div>
+          <div style="font-family:var(--font-d);font-size:9px;color:var(--gold);letter-spacing:1px;">PUBLIC RANKING</div>
+          <div style="font-family:var(--font-b);font-size:10px;color:var(--muted);margin-top:2px;">Show your stats on the global leaderboard</div>
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-left:auto;">
+          <input type="checkbox" id="lb-optin-toggle" onchange="toggleLBOptIn(this.checked)" style="width:16px;height:16px;accent-color:var(--gold);">
+          <span id="lb-optin-label" style="font-family:var(--font-d);font-size:9px;color:var(--muted);letter-spacing:1px;">OFF</span>
+        </label>
       </div>
     </div>
 
@@ -2772,9 +2788,12 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
       </div>
     </div>
 
-    <!-- Coming Soon Board Preview -->
+    <!-- Live Global Board -->
     <div style="padding:0 24px 16px;">
-      <div style="font-family:var(--font-d);font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:14px;">GLOBAL LEADERBOARD PREVIEW — PLACEHOLDER</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-family:var(--font-d);font-size:9px;color:var(--muted);letter-spacing:2px;">GLOBAL LEADERBOARD — LIVE</div>
+        <div id="lb-last-updated" style="font-family:var(--font-d);font-size:8px;color:var(--muted);letter-spacing:1px;"></div>
+      </div>
 
       <!-- Tab bar -->
       <div style="display:flex;gap:8px;margin-bottom:16px;" id="lb-tabs">
@@ -2786,24 +2805,20 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
 
       <!-- Board -->
       <div style="background:rgba(255,255,255,0.01);border:1px solid var(--border);">
-        <!-- Table header -->
-        <div style="display:grid;grid-template-columns:44px 1fr 70px 100px 90px 100px;font-family:var(--font-d);font-size:7px;color:var(--muted);letter-spacing:1.5px;padding:8px 14px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);">
-          <span>#</span><span>TRADER</span><span>RANK</span><span>DISC. SCORE</span><span>WIN RATE</span><span>NET PNL %</span>
+        <div style="display:grid;grid-template-columns:44px 1fr 70px 90px 80px 90px 70px;font-family:var(--font-d);font-size:7px;color:var(--muted);letter-spacing:1.5px;padding:8px 14px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);">
+          <span>#</span><span>TRADER</span><span>RANK</span><span>DISC.</span><span>WIN %</span><span>PNL %</span><span>STREAK</span>
         </div>
-        <div id="lb-rows"><!-- Rendered by JS --></div>
+        <div id="lb-rows">
+          <div style="padding:24px;text-align:center;font-family:var(--font-d);font-size:9px;color:var(--muted);letter-spacing:1px;">LOADING RANKINGS…</div>
+        </div>
       </div>
 
-      <!-- CTA box -->
-      <div style="margin-top:20px;padding:24px;border:1px solid rgba(255,215,0,0.2);background:rgba(255,215,0,0.03);text-align:center;position:relative;overflow:hidden;">
+      <!-- Your Position Card -->
+      <div style="margin-top:20px;padding:20px;border:1px solid rgba(255,215,0,0.2);background:rgba(255,215,0,0.03);position:relative;overflow:hidden;">
         <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);box-shadow:0 0 20px rgba(255,215,0,0.3);"></div>
-        <div style="font-family:var(--font-d);font-size:22px;font-weight:900;color:var(--gold);text-shadow:var(--gold-glow);margin-bottom:8px;">YOUR RANK IS BEING RECORDED</div>
-        <div style="font-family:var(--font-b);font-size:12px;color:var(--text-dim);line-height:1.7;max-width:480px;margin:0 auto 16px;">
-          Every discipline quest you complete, every tilt you avoid, every trade you log with precision — 
-          it all counts toward your position on the global board when it launches.
-        </div>
-        <div style="font-family:var(--font-d);font-size:10px;color:var(--muted);letter-spacing:1px;">The traders who grind now will be at the top when the gates open.</div>
-        <div style="margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;" id="lb-your-card">
-          <!-- Rendered by JS: your current rank card -->
+        <div style="font-family:var(--font-d);font-size:9px;color:var(--gold);letter-spacing:2px;margin-bottom:12px;">YOUR POSITION</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;" id="lb-your-card">
+          <!-- Rendered by JS -->
         </div>
       </div>
 
@@ -4800,6 +4815,8 @@ function saveTrade(){
   save(); checkAutoQuests(); checkTiltConditions(); renderAll();
   // Sync to cloud (both new and edited trades)
   if (typeof syncTradeToSupabase === 'function') syncTradeToSupabase(trade);
+  // Auto-push leaderboard stats after each trade save
+  setTimeout(() => { if(typeof lbPushStats === "function") lbPushStats(); }, 1500);
   closeModal();
   showToast(editId?'Trade updated ✓':'Trade logged +10 XP 🎯');
 }
@@ -5541,7 +5558,13 @@ function showPage(page){
 }
 
 // ─── LEADERBOARD ─────────────────────────────────────────────────
+// ─── LEADERBOARD — LIVE SUPABASE ──────────────────────────────
+
 let lbTab = 'rank';
+let lbData = [];          // cached live data
+let lbOptedIn = false;    // whether this user is on the board
+
+// ── Tab switch ──────────────────────────────────────────────────
 function switchLBTab(tab) {
   lbTab = tab;
   document.querySelectorAll('.lb-tab').forEach(b=>b.classList.remove('active'));
@@ -5549,58 +5572,217 @@ function switchLBTab(tab) {
   renderLBRows();
 }
 
-// Rank tiers: G F E D C B A S
-const LB_GHOST_NAMES = ['SilentEdge','VolatilePrince','NinetyThree','ZeroSlippage','BloodMonday','IronDiscipline','QuantGhost','MarketBreakerX','TheTiltKiller','HiddenOrder','NightSession','ColdEntryPro','RedCandleSlayer','LiquidityHunter','PrecisionMark','GridMasterZ','FundingArb','StopHunted','CleanSetup','ApexPredator99'];
+// ── Collect this user's current stats ───────────────────────────
+function collectMyLBStats() {
+  const rd = getRankDisc();
+  const info = getXPInfo(getTotalXP());
+  const p = (() => { try{return JSON.parse(localStorage.getItem(LS.PROFILE))||{};}catch{return {};} })();
+  const total = trades.length;
+  const wins  = trades.filter(t=>t.result==='Win').length;
+  const winRate = total ? Math.round((wins/total)*100) : 0;
+  const netPnl  = trades.reduce((s,t)=>s+(t.netPnl||t.pnl||0),0);
+  const capital = parseFloat(localStorage.getItem(LS.CAPITAL)||0)||1;
+  const netPnlPct = parseFloat(((netPnl/capital)*100).toFixed(2));
+  const disc = calcDisciplineScore() || 0;
 
-function makeMockTrader(i) {
-  const tierIdx = Math.max(0, RANK_TIERS.length - 1 - Math.floor(i / 3));
-  const divIdx = (2 - (i % 3));
-  const tier = RANK_TIERS[Math.min(tierIdx, RANK_TIERS.length-1)];
-  const div  = RANK_DIVS[Math.max(0,divIdx)];
-  const disc = Math.max(20, 95 - i*3 + Math.floor(Math.random()*8));
-  const wr   = Math.max(35, 72 - i*1.5 + Math.floor(Math.random()*10));
-  const pnl  = (180 - i*8 + Math.floor(Math.random()*15)).toFixed(1);
-  const streak = Math.max(0, 20-i + Math.floor(Math.random()*5));
-  return {name:LB_GHOST_NAMES[i%LB_GHOST_NAMES.length]+(i>19?'_'+i:''), tier, div, disc, wr, pnl:parseFloat(pnl), streak};
+  // current win streak
+  let streak = 0;
+  for(let i=trades.length-1;i>=0;i--){
+    if(trades[i].result==='Win') streak++;
+    else break;
+  }
+
+  return {
+    display_name: p.name || supabaseUser?.email?.split('@')[0] || 'Trader',
+    rank_tier:    rd.tier || 'G',
+    rank_div:     rd.div  || 'LOW',
+    discipline_score: disc,
+    win_rate:     winRate,
+    net_pnl_pct:  netPnlPct,
+    streak:       streak,
+    trade_count:  total,
+    level:        info.level,
+    opted_in:     true,
+  };
 }
 
+// ── Push stats to Supabase leaderboard table ────────────────────
+async function lbPushStats() {
+  if(!supabaseUser || !lbOptedIn) return;
+  const stats = collectMyLBStats();
+  const { error } = await supabaseClient
+    .from('leaderboard')
+    .upsert([{ user_id: supabaseUser.id, ...stats }], { onConflict: 'user_id' });
+  if(error) console.warn('LB push error:', error.message);
+}
+
+// ── Opt in ──────────────────────────────────────────────────────
+async function lbOptIn() {
+  if(!supabaseUser) { showToast('Log in to join the leaderboard', true); return; }
+  lbOptedIn = true;
+  localStorage.setItem('traderow_lb_optedin', '1');
+  await lbPushStats();
+  showToast('🏆 You are now on the leaderboard!');
+  await lbFetchAndRender();
+}
+
+// ── Opt out ─────────────────────────────────────────────────────
+async function lbOptOut() {
+  if(!supabaseUser) return;
+  if(!confirm('Remove yourself from the leaderboard?')) return;
+  lbOptedIn = false;
+  localStorage.removeItem('traderow_lb_optedin');
+  await supabaseClient.from('leaderboard').update({ opted_in: false }).eq('user_id', supabaseUser.id);
+  showToast('Removed from leaderboard');
+  await lbFetchAndRender();
+}
+
+// ── Refresh button ───────────────────────────────────────────────
+async function lbRefresh() {
+  if(lbOptedIn) await lbPushStats(); // push fresh stats first
+  await lbFetchAndRender();
+}
+
+// ── Fetch from Supabase + render ────────────────────────────────
+async function lbFetchAndRender() {
+  const dot = $('lb-dot'), statusTxt = $('lb-status-text');
+  if(dot) { dot.style.background='var(--gold)'; dot.style.boxShadow='0 0 6px var(--gold)'; }
+  if(statusTxt) statusTxt.textContent = 'SYNCING...';
+
+  if(!supabaseUser) {
+    // Not logged in — show empty board
+    lbData = [];
+    renderLBRows();
+    if(dot) dot.style.background='var(--muted)';
+    if(statusTxt) statusTxt.textContent = 'LOG IN TO VIEW';
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from('leaderboard')
+    .select('*')
+    .eq('opted_in', true)
+    .order('discipline_score', { ascending: false })
+    .limit(100);
+
+  if(error) {
+    console.warn('LB fetch error:', error.message);
+    if(dot) { dot.style.background='var(--loss)'; dot.style.boxShadow='0 0 6px var(--loss)'; }
+    if(statusTxt) statusTxt.textContent = 'CONNECTION ERROR';
+    return;
+  }
+
+  lbData = data || [];
+
+  // Check opt-in state
+  lbOptedIn = !!localStorage.getItem('traderow_lb_optedin');
+  const myEntry = lbData.find(r=>r.user_id===supabaseUser.id);
+  if(myEntry) lbOptedIn = true;
+
+  // Update UI state
+  const optinBanner  = $('lb-optin-banner');
+  const statsBar     = $('lb-your-stats-bar');
+  if(lbOptedIn) {
+    if(optinBanner) optinBanner.style.display='none';
+    if(statsBar)    statsBar.style.display='block';
+  } else {
+    if(optinBanner) optinBanner.style.display='block';
+    if(statsBar)    statsBar.style.display='none';
+  }
+
+  // Update your position badge
+  if(myEntry) {
+    const sorted = getSortedData('disc');
+    const myPos  = sorted.findIndex(r=>r.user_id===supabaseUser.id)+1;
+    const posEl  = $('lb-your-position-badge');
+    if(posEl) posEl.textContent = myPos > 0 ? `#${myPos} GLOBALLY` : '';
+  }
+
+  // Live status
+  if(dot) { dot.style.background='var(--win)'; dot.style.boxShadow='0 0 6px var(--win)'; }
+  if(statusTxt) statusTxt.textContent = `LIVE · ${lbData.length} TRADER${lbData.length!==1?'S':''}`;
+  const lastEl = $('lb-last-updated');
+  if(lastEl) lastEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+
+  renderLBRows();
+  renderYourLBCard();
+}
+
+// ── Sort helper ──────────────────────────────────────────────────
+function getSortedData(tab) {
+  const d = [...lbData];
+  if(tab==='disc' || tab==='rank') {
+    const tierOrder = {G:0,F:1,E:2,D:3,C:4,B:5,A:6,S:7};
+    const divOrder  = {LOW:0,MID:1,TOP:2};
+    d.sort((a,b)=>{
+      const tDiff=(tierOrder[b.rank_tier]||0)-(tierOrder[a.rank_tier]||0);
+      if(tDiff!==0) return tDiff;
+      const dDiff=(divOrder[b.rank_div]||0)-(divOrder[a.rank_div]||0);
+      if(dDiff!==0) return dDiff;
+      return (b.discipline_score||0)-(a.discipline_score||0);
+    });
+  } else if(tab==='pnl')     d.sort((a,b)=>(b.net_pnl_pct||0)-(a.net_pnl_pct||0));
+  else if(tab==='winrate')   d.sort((a,b)=>(b.win_rate||0)-(a.win_rate||0));
+  else if(tab==='streak')    d.sort((a,b)=>(b.streak||0)-(a.streak||0));
+  return d;
+}
+
+// ── Render leaderboard rows ──────────────────────────────────────
 function renderLBRows() {
   const cont = $('lb-rows'); if(!cont) return;
-  let traders = Array.from({length:20},(_,i)=>makeMockTrader(i));
-  if(lbTab==='disc') traders.sort((a,b)=>b.disc-a.disc);
-  else if(lbTab==='pnl') traders.sort((a,b)=>b.pnl-a.pnl);
-  else if(lbTab==='streak') traders.sort((a,b)=>b.streak-a.streak);
-  // else rank order (default)
-  cont.innerHTML = traders.slice(0,12).map((t,i)=>{
-    const pos=i+1, isTop=pos<=3;
+
+  if(!lbData.length) {
+    cont.innerHTML=`<div style="padding:40px;text-align:center;font-family:var(--font-d);font-size:9px;color:var(--muted);letter-spacing:1px;">
+      ${supabaseUser ? 'NO TRADERS ON THE BOARD YET — BE THE FIRST' : 'LOG IN TO VIEW THE LEADERBOARD'}
+    </div>`;
+    return;
+  }
+
+  const sorted = getSortedData(lbTab);
+  const myId   = supabaseUser?.id;
+
+  cont.innerHTML = sorted.slice(0,50).map((t,i)=>{
+    const pos      = i+1;
+    const isMe     = t.user_id === myId;
+    const isTop    = pos <= 3;
     const posLabel = pos===1?'🥇':pos===2?'🥈':pos===3?'🥉':pos;
-    const rankColor = RANK_COLORS[t.tier]||'var(--muted)';
-    const pnlCls = t.pnl>0?'win':'loss';
-    const statVal = lbTab==='disc'?`${t.disc}/100`:lbTab==='pnl'?`+${t.pnl}%`:lbTab==='streak'?`${t.streak}d`:t.disc+'/100';
-    return `<div class="lb-row ${isTop?'top3':''}">
+    const tier     = t.rank_tier||'G';
+    const div      = t.rank_div||'LOW';
+    const rankColor= RANK_COLORS[tier]||'var(--muted)';
+    const rankGlow = RANK_GLOW[tier]||'none';
+    const disc     = t.discipline_score||0;
+    const wr       = t.win_rate||0;
+    const pnl      = t.net_pnl_pct||0;
+    const streak   = t.streak||0;
+    const name     = (t.display_name||'Trader').slice(0,22);
+    const meBorder = isMe ? 'border-left:2px solid var(--gold);' : '';
+
+    return `<div class="lb-row ${isTop?'top3':''} ${isMe?'lb-me':''}" style="${meBorder}">
       <div class="lb-pos ${isTop?'gold-pos':''}">${posLabel}</div>
-      <div>
-        <div class="lb-trader-name" style="color:var(--text);">${t.name}</div>
-        <div style="font-family:var(--font-d);font-size:7px;color:var(--muted);letter-spacing:0.5px;">Rank ${t.tier} · ${t.div}</div>
+      <div style="min-width:0;">
+        <div class="lb-trader-name" style="color:${isMe?'var(--gold)':'var(--text)'};">${name}${isMe?' ◀ YOU':''}</div>
+        <div style="font-family:var(--font-d);font-size:7px;color:var(--muted);letter-spacing:0.5px;">${tier} · ${div} · ${t.trade_count||0} trades</div>
       </div>
-      <div class="lb-rank-cell" style="color:${rankColor};text-shadow:${RANK_GLOW[t.tier]||'none'};">${t.tier}<span style="font-size:7px;opacity:0.6;"> ${t.div.slice(0,1)}</span></div>
-      <div class="lb-val">${t.disc}<span style="opacity:0.5;">/100</span></div>
-      <div class="lb-val ${t.wr>55?'win':''}">${t.wr}<span style="opacity:0.5;">%</span></div>
-      <div class="lb-val ${pnlCls}">+${t.pnl}<span style="opacity:0.5;">%</span></div>
+      <div class="lb-rank-cell" style="color:${rankColor};text-shadow:${rankGlow};">${tier}<span style="font-size:7px;opacity:0.6;"> ${div.slice(0,1)}</span></div>
+      <div class="lb-val ${disc>=70?'win':disc>=40?'':'loss'}">${disc}<span style="opacity:0.5;">/100</span></div>
+      <div class="lb-val ${wr>=55?'win':''}">${wr}<span style="opacity:0.5;">%</span></div>
+      <div class="lb-val ${pnl>0?'win':pnl<0?'loss':''}">${pnl>0?'+':''}${pnl}<span style="opacity:0.5;">%</span></div>
+      <div class="lb-val ${streak>=5?'win':''}">${streak}<span style="opacity:0.5;">d</span></div>
     </div>`;
   }).join('');
 }
 
+// ── Render rank tier map ─────────────────────────────────────────
 function renderRankTierMap() {
   const cont=$('rank-tier-map'); if(!cont) return;
   cont.innerHTML = RANK_TIERS.map(tier=>{
     const color=RANK_COLORS[tier]||'var(--muted)';
-    const total = (RANK_DIV_NEEDED[tier]?.LOW||0)+(RANK_DIV_NEEDED[tier]?.MID||0)+(RANK_DIV_NEEDED[tier]?.TOP||0);
+    const total=(RANK_DIV_NEEDED[tier]?.LOW||0)+(RANK_DIV_NEEDED[tier]?.MID||0)+(RANK_DIV_NEEDED[tier]?.TOP||0);
     return `<div class="rank-tier-card" style="border-color:${color}22;background:${color}08;">
       <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,${color},transparent);box-shadow:0 0 8px ${color}55;"></div>
       <div class="rank-tier-letter" style="color:${color};text-shadow:0 0 10px ${color}66;">${tier}</div>
       <div class="rank-tier-name">Rank ${tier}</div>
-      <div class="rank-tier-req" style="color:var(--muted);">${total} quests total</div>
+      <div class="rank-tier-req" style="color:var(--muted);">${total} quests</div>
       <div style="display:flex;gap:4px;margin-top:4px;">
         ${RANK_DIVS.map(d=>`<div style="font-family:var(--font-d);font-size:6px;padding:1px 4px;border:1px solid ${color}33;color:${color}99;letter-spacing:0.5px;">${d}</div>`).join('')}
       </div>
@@ -5608,6 +5790,7 @@ function renderRankTierMap() {
   }).join('');
 }
 
+// ── Render rank requirement table ────────────────────────────────
 function renderRankReqTable() {
   const cont=$('rank-req-rows'); if(!cont) return;
   cont.innerHTML = RANK_TIERS.map(tier=>{
@@ -5615,45 +5798,134 @@ function renderRankReqTable() {
     const r=RANK_DIV_NEEDED[tier]||{LOW:0,MID:0,TOP:0};
     const total=r.LOW+r.MID+r.TOP;
     const nextTier=RANK_TIERS[RANK_TIERS.indexOf(tier)+1];
-    const nextLabel=nextTier?`→ ${nextTier} LOW`:'MAX';
     return `<div class="rank-req-row">
       <span style="font-family:var(--font-d);font-size:11px;font-weight:900;color:${color};text-shadow:${RANK_GLOW[tier]||'none'};">${tier}</span>
       <span style="font-family:var(--font-d);font-size:9px;color:var(--text-dim);">${r.LOW} quests</span>
       <span style="font-family:var(--font-d);font-size:9px;color:var(--text-dim);">${r.MID} quests</span>
-      <span style="font-family:var(--font-d);font-size:9px;color:var(--text-dim);">${r.TOP} quests <span style="color:${color};opacity:0.7;">${nextLabel}</span></span>
+      <span style="font-family:var(--font-d);font-size:9px;color:var(--text-dim);">${r.TOP} quests${nextTier?` <span style="color:${color};opacity:0.7;">→ ${nextTier}</span>`:''}</span>
       <span style="font-family:var(--font-d);font-size:10px;font-weight:700;color:${color};">${total} total</span>
     </div>`;
   }).join('');
 }
 
-function renderYourLBCard() {
-  const cont=$('lb-your-card'); if(!cont) return;
-  const rd=getRankDisc(), info=getXPInfo(getTotalXP());
-  const tier=rd.tier||'G', div=rd.div||'LOW';
-  const color=RANK_COLORS[tier]||'var(--muted)';
-  const needed=getNeededPts(tier,div);
-  const pct=Math.round(((rd.pts||0)/needed)*100);
-  const disc=calcDisciplineScore();
-  cont.innerHTML=`<div style="border:1px solid ${color}44;background:${color}08;padding:16px 20px;min-width:200px;position:relative;overflow:hidden;">
-    <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,${color},transparent);box-shadow:0 0 10px ${color}66;"></div>
-    <div style="font-family:var(--font-d);font-size:8px;color:${color};letter-spacing:2px;margin-bottom:6px;opacity:0.7;">YOUR CURRENT RANK</div>
-    <div style="font-family:var(--font-d);font-size:42px;font-weight:900;color:${color};text-shadow:0 0 20px ${color}88;line-height:1;">${tier}</div>
-    <div style="font-family:var(--font-d);font-size:9px;color:var(--muted);letter-spacing:1px;margin:2px 0 10px;">Rank ${tier} · ${div} TIER</div>
-    <div style="height:3px;background:rgba(255,255,255,0.06);overflow:hidden;margin-bottom:3px;"><div style="height:100%;width:${pct}%;background:${color};transition:width 0.6s;"></div></div>
-    <div style="font-family:var(--font-d);font-size:7px;color:var(--muted);">DISCIPLINE: ${rd.pts||0}/${needed} pts</div>
-    <div style="margin-top:8px;display:flex;gap:12px;">
-      <div><div style="font-family:var(--font-d);font-size:7px;color:var(--muted);letter-spacing:1px;">LEVEL</div><div style="font-family:var(--font-d);font-size:14px;font-weight:900;color:var(--accent);">${info.level}</div></div>
-      <div><div style="font-family:var(--font-d);font-size:7px;color:var(--muted);letter-spacing:1px;">DISC.</div><div style="font-family:var(--font-d);font-size:14px;font-weight:900;color:var(--text);">${disc!==null?disc:'—'}</div></div>
-      <div><div style="font-family:var(--font-d);font-size:7px;color:var(--muted);letter-spacing:1px;">TRADES</div><div style="font-family:var(--font-d);font-size:14px;font-weight:900;color:var(--text);">${trades.length}</div></div>
-    </div>
-  </div>`;
-}
-
+// ── Main render entry point ──────────────────────────────────────
 function renderLeaderboard() {
   renderRankTierMap();
   renderRankReqTable();
-  renderLBRows();
+  // Init opt-in checkbox state
+  lbOptedIn = !!localStorage.getItem('traderow_lb_optedin');
+  const cb = document.getElementById('lb-optin-toggle');
+  const lbl = document.getElementById('lb-optin-label');
+  if(cb) cb.checked = lbOptedIn;
+  if(lbl) lbl.textContent = lbOptedIn ? 'ON' : 'OFF';
   renderYourLBCard();
+  lbFetchAndRender();
+}
+
+
+// ── fetchLeaderboard (alias for refresh button) ─────────────────
+async function fetchLeaderboard() {
+  if(lbOptedIn) await lbPushStats();
+  await lbFetchAndRender();
+}
+
+// ── toggleLBOptIn (checkbox handler) ────────────────────────────
+async function toggleLBOptIn(checked) {
+  const label = $('lb-optin-label');
+  if(!supabaseUser) {
+    showToast('Log in to join the leaderboard', true);
+    const cb = $('lb-optin-toggle'); if(cb) cb.checked = false;
+    if(label) label.textContent = 'OFF';
+    return;
+  }
+  if(checked) {
+    lbOptedIn = true;
+    localStorage.setItem('traderow_lb_optedin', '1');
+    if(label) label.textContent = 'ON';
+    await lbPushStats();
+    showToast('🏆 You are now on the leaderboard!');
+    await lbFetchAndRender();
+  } else {
+    if(!confirm('Remove yourself from the global leaderboard?')) {
+      const cb = $('lb-optin-toggle'); if(cb) cb.checked = true;
+      return;
+    }
+    lbOptedIn = false;
+    localStorage.removeItem('traderow_lb_optedin');
+    if(label) label.textContent = 'OFF';
+    await supabaseClient.from('leaderboard').update({ opted_in: false }).eq('user_id', supabaseUser.id);
+    showToast('Removed from leaderboard');
+    await lbFetchAndRender();
+  }
+}
+
+// ── Render your position card ────────────────────────────────────
+function renderYourLBCard() {
+  const cont = $('lb-your-card'); if(!cont) return;
+  const rd = getRankDisc(), info = getXPInfo(getTotalXP());
+  const tier = rd.tier || 'G', div = rd.div || 'LOW';
+  const color = RANK_COLORS[tier] || 'var(--muted)';
+  const disc = calcDisciplineScore();
+  const total = trades.length;
+  const wins = trades.filter(t=>t.result==='Win').length;
+  const wr = total ? Math.round((wins/total)*100) : 0;
+  const netPnl = trades.reduce((s,t)=>s+(t.netPnl||t.pnl||0),0);
+  const capital = parseFloat(localStorage.getItem(LS.CAPITAL)||0)||1;
+  const pnlPct = ((netPnl/capital)*100).toFixed(1);
+  let streak = 0;
+  for(let i=trades.length-1;i>=0;i--){ if(trades[i].result==='Win') streak++; else break; }
+
+  // Find global position
+  let globalPos = '—';
+  if(supabaseUser && lbData.length) {
+    const sorted = getSortedData('disc');
+    const myIdx = sorted.findIndex(r=>r.user_id===supabaseUser.id);
+    if(myIdx>-1) globalPos = '#'+(myIdx+1)+' of '+lbData.filter(r=>r.opted_in!==false).length;
+  }
+
+  const needed = getNeededPts(tier, div);
+  const pct = Math.round(((rd.pts||0)/needed)*100);
+
+  cont.innerHTML = `
+    <div style="border:1px solid ${color}44;background:${color}08;padding:16px 20px;min-width:180px;position:relative;overflow:hidden;flex:0 0 auto;">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,${color},transparent);"></div>
+      <div style="font-family:var(--font-d);font-size:7px;color:${color};letter-spacing:2px;margin-bottom:4px;opacity:0.7;">YOUR RANK</div>
+      <div style="font-family:var(--font-d);font-size:44px;font-weight:900;color:${color};text-shadow:0 0 20px ${color}88;line-height:1;">${tier}</div>
+      <div style="font-family:var(--font-d);font-size:8px;color:var(--muted);letter-spacing:1px;margin:2px 0 8px;">${tier} · ${div}</div>
+      <div style="height:3px;background:rgba(255,255,255,0.06);overflow:hidden;"><div style="height:100%;width:${pct}%;background:${color};transition:width 0.6s;"></div></div>
+      <div style="font-family:var(--font-d);font-size:7px;color:var(--muted);margin-top:3px;">${rd.pts||0}/${needed} pts</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;flex:1;min-width:200px;">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        <div style="padding:10px;border:1px solid var(--border);background:rgba(255,255,255,0.01);text-align:center;">
+          <div style="font-family:var(--font-d);font-size:7px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">GLOBAL POS</div>
+          <div style="font-family:var(--font-d);font-size:16px;font-weight:900;color:var(--gold);">${globalPos}</div>
+        </div>
+        <div style="padding:10px;border:1px solid var(--border);background:rgba(255,255,255,0.01);text-align:center;">
+          <div style="font-family:var(--font-d);font-size:7px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">DISCIPLINE</div>
+          <div style="font-family:var(--font-d);font-size:16px;font-weight:900;color:var(--text);">${disc!==null?disc:'—'}<span style="font-size:9px;opacity:0.5;">/100</span></div>
+        </div>
+        <div style="padding:10px;border:1px solid var(--border);background:rgba(255,255,255,0.01);text-align:center;">
+          <div style="font-family:var(--font-d);font-size:7px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">WIN RATE</div>
+          <div style="font-family:var(--font-d);font-size:16px;font-weight:900;color:${wr>=55?'var(--win)':'var(--text)'};">${wr}<span style="font-size:9px;opacity:0.5;">%</span></div>
+        </div>
+        <div style="padding:10px;border:1px solid var(--border);background:rgba(255,255,255,0.01);text-align:center;">
+          <div style="font-family:var(--font-d);font-size:7px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">NET PNL %</div>
+          <div style="font-family:var(--font-d);font-size:16px;font-weight:900;color:${parseFloat(pnlPct)>0?'var(--win)':parseFloat(pnlPct)<0?'var(--loss)':'var(--text)'};">${parseFloat(pnlPct)>0?'+':''}${pnlPct}<span style="font-size:9px;opacity:0.5;">%</span></div>
+        </div>
+        <div style="padding:10px;border:1px solid var(--border);background:rgba(255,255,255,0.01);text-align:center;">
+          <div style="font-family:var(--font-d);font-size:7px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">TRADES</div>
+          <div style="font-family:var(--font-d);font-size:16px;font-weight:900;color:var(--text);">${total}</div>
+        </div>
+        <div style="padding:10px;border:1px solid var(--border);background:rgba(255,255,255,0.01);text-align:center;">
+          <div style="font-family:var(--font-d);font-size:7px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">STREAK</div>
+          <div style="font-family:var(--font-d);font-size:16px;font-weight:900;color:${streak>=3?'var(--win)':'var(--text)'};">${streak}<span style="font-size:9px;opacity:0.5;">W</span></div>
+        </div>
+      </div>
+      <div style="font-family:var(--font-d);font-size:8px;color:var(--muted);letter-spacing:1px;text-align:right;">
+        ${!supabaseUser ? '⚠ Log in to appear on the global board' : lbOptedIn ? '✓ YOUR STATS ARE VISIBLE ON THE GLOBAL BOARD' : '⚠ ENABLE PUBLIC RANKING ABOVE TO JOIN THE BOARD'}
+      </div>
+    </div>`;
 }
 
 // ─── TOAST ───────────────────────────────────────────────────────
@@ -6260,6 +6532,7 @@ async function agLogin() {
   setTimeout(() => {
     agProceedAfterAuth();
     syncTradesFromCloud();
+    if (typeof updateLBOptinUI === 'function') updateLBOptinUI();
     showToast('Logged in — syncing trades ☁️');
   }, 700);
 }
