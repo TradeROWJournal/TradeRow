@@ -2281,18 +2281,26 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
       </div>
     </div>
 
-    <!-- ══ SUPABASE AUTH BOX ══ -->
-    <div id="authBox" style="padding:16px;margin:12px 16px;background:#1a2332;border:1px solid #2a3a4a;border-radius:10px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
-      <h3 style="width:100%;margin:0 0 6px;color:#00bfff;font-size:15px;">Trader Login</h3>
-      <input id="authEmail" placeholder="Email" style="flex:1;min-width:160px;padding:8px 10px;border-radius:6px;border:1px solid #2a3a4a;background:#0d1821;color:#fff;">
-      <input id="authPassword" placeholder="Password" type="password" style="flex:1;min-width:160px;padding:8px 10px;border-radius:6px;border:1px solid #2a3a4a;background:#0d1821;color:#fff;">
-      <button onclick="signup()" style="padding:8px 14px;border-radius:6px;background:#00bfff;color:#000;border:none;cursor:pointer;font-weight:bold;">Sign Up</button>
-      <button onclick="login()" style="padding:8px 14px;border-radius:6px;background:#00ff88;color:#000;border:none;cursor:pointer;font-weight:bold;">Login</button>
-      <button onclick="logout()" style="padding:8px 14px;border-radius:6px;background:#ff4d4d;color:#fff;border:none;cursor:pointer;font-weight:bold;">Logout</button>
+    <!-- ══ CLOUD SYNC AUTH BOX ══ -->
+    <div id="authBox" style="padding:14px 16px;margin:0 16px 10px;background:var(--surface-solid);border:1px solid var(--border);border-left:3px solid var(--accent);position:relative;">
+      <div style="font-family:var(--font-d);font-size:9px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+        <span>☁</span> Cloud Sync
+      </div>
+      <!-- Login fields -->
+      <div id="authFields" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+        <input id="authEmail" placeholder="Email" type="email" style="flex:1;min-width:160px;padding:7px 10px;background:rgba(0,0,0,0.4);border:1px solid var(--border);color:var(--text);font-family:var(--font-b);font-size:12px;outline:none;">
+        <input id="authPassword" placeholder="Password" type="password" style="flex:1;min-width:140px;padding:7px 10px;background:rgba(0,0,0,0.4);border:1px solid var(--border);color:var(--text);font-family:var(--font-b);font-size:12px;outline:none;">
+        <button onclick="login()" style="padding:7px 14px;background:var(--accent);color:#000;border:none;cursor:pointer;font-family:var(--font-d);font-size:9px;font-weight:700;letter-spacing:1px;">LOGIN</button>
+        <button onclick="signup()" style="padding:7px 14px;background:transparent;color:var(--accent);border:1px solid var(--accent);cursor:pointer;font-family:var(--font-d);font-size:9px;font-weight:700;letter-spacing:1px;">SIGN UP</button>
+      </div>
+      <!-- Logged in state -->
+      <div id="authStatus" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;">
+        <span style="font-size:11px;color:var(--win);">● CONNECTED</span>
+        <span id="authUserEmail" style="font-family:var(--font-b);font-size:12px;color:var(--text-dim);flex:1;"></span>
+        <button onclick="syncTradesFromCloud()" style="padding:6px 12px;background:transparent;color:var(--accent);border:1px solid var(--border);cursor:pointer;font-family:var(--font-d);font-size:8px;letter-spacing:1px;">↓ SYNC</button>
+        <button onclick="logout()" style="padding:6px 12px;background:transparent;color:var(--loss);border:1px solid rgba(255,76,76,0.3);cursor:pointer;font-family:var(--font-d);font-size:8px;letter-spacing:1px;">LOGOUT</button>
+      </div>
     </div>
-
-    <!-- ══ SUPABASE TRADE LIST ══ -->
-    <div id="tradeList" style="padding:12px 16px;display:flex;flex-direction:column;gap:8px;"></div>
 
     <!-- ══ ANALYTICS PAGE ══ -->
     <div class="page content" id="page-analytics">
@@ -4689,6 +4697,8 @@ function saveTrade(){
     showToast(`⚠ Risk violation: ${riskPct.toFixed(1)}% used vs ${riskProfile.riskPT}% limit`, true);
   }
   save(); checkAutoQuests(); checkTiltConditions(); renderAll();
+  // Sync new trades to cloud if logged in
+  if (!editId && typeof saveTradeToCloud === 'function') saveTradeToCloud(trade);
   closeModal();
   showToast(editId?'Trade updated ✓':'Trade logged +10 XP 🎯');
 }
@@ -6078,110 +6088,151 @@ let seSaveTimer=null;
 <script>
 const SUPABASE_URL = "https://hgzxeezrfsyjoltwevzu.supabase.co"
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhnenhlZXpyZnN5am9sdHdldnp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxMDExODUsImV4cCI6MjA4ODY3NzE4NX0.Jwo8ZCl9HOiHJkq27dIh7-ngoy_9EX4eSOre0ef82ts"
-const supabaseClient = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-)
-console.log("Supabase connected")
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+// ── Auth state tracking ───────────────────────────────────────
+let supabaseUser = null;
+
+function updateAuthUI(user) {
+  supabaseUser = user;
+  const authBox = document.getElementById("authBox");
+  const authFields = document.getElementById("authFields");
+  const authStatus = document.getElementById("authStatus");
+  if (!authBox) return;
+  if (user) {
+    if (authFields) authFields.style.display = "none";
+    if (authStatus) {
+      authStatus.style.display = "flex";
+      const emailEl = document.getElementById("authUserEmail");
+      if (emailEl) emailEl.textContent = user.email;
+    }
+  } else {
+    if (authFields) authFields.style.display = "flex";
+    if (authStatus) authStatus.style.display = "none";
+  }
+}
 
 // ── Auth: Sign Up ─────────────────────────────────────────────
 async function signup() {
-  const email    = document.getElementById("authEmail").value
+  const email    = document.getElementById("authEmail").value.trim()
   const password = document.getElementById("authPassword").value
+  if (!email || !password) { showToast("Enter email and password", true); return; }
   const { data, error } = await supabaseClient.auth.signUp({ email, password })
-  if (error) { alert(error.message); return }
-  alert("Account created! Check your email.")
+  if (error) { showToast("Sign up failed: " + error.message, true); return; }
+  showToast("Account created! Check your email to confirm ✉️");
 }
 
 // ── Auth: Login ───────────────────────────────────────────────
 async function login() {
-  const email    = document.getElementById("authEmail").value
+  const email    = document.getElementById("authEmail").value.trim()
   const password = document.getElementById("authPassword").value
+  if (!email || !password) { showToast("Enter email and password", true); return; }
   const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password })
-  if (error) { alert(error.message); return }
-  alert("Logged in!")
-  loadTrades()
+  if (error) { showToast("Login failed: " + error.message, true); return; }
+  updateAuthUI(data.user);
+  showToast("Logged in — syncing trades ☁️");
+  syncTradesFromCloud();
 }
 
 // ── Auth: Logout ───────────────────────────────────────────────
 async function logout() {
   await supabaseClient.auth.signOut()
-  document.getElementById("tradeList").innerHTML = ""
-  alert("Logged out")
+  updateAuthUI(null);
+  showToast("Logged out");
 }
 
-// ── Trades: Save ──────────────────────────────────────────────
-async function saveTrade() {
-  const { data: userData } = await supabaseClient.auth.getUser()
-  const user = userData.user
-  const { data, error } = await supabaseClient
-    .from("trades")
-    .insert([
-      {
-        user_id:         user.id,
-        symbol:          "EUR/USD",
-        trade_type:      "long",
-        entry_price:     1,
-        exit_price:      1.2,
-        position_size:   100,
-        pnl:             100,
-        strategy:        "breakout",
-        notes:           "clean setup",
-        emotion_tag:     "calm",
-        setup_quality:   9,
-        discipline_score: 8
-      }
-    ])
-  console.log(data, error)
-}
-
-// ── Trades: Load & Render ─────────────────────────────────────
-async function loadTrades() {
+// ── Trades: Sync from Cloud → Local ──────────────────────────
+async function syncTradesFromCloud() {
+  if (!supabaseUser) return;
   const { data, error } = await supabaseClient
     .from("trades")
     .select("*")
+    .eq("user_id", supabaseUser.id)
     .order("created_at", { ascending: false })
 
-  if (error) {
-    console.error("loadTrades error:", error)
-    return
+  if (error) { console.error("syncTradesFromCloud error:", error); return; }
+  if (!data || data.length === 0) return;
+
+  // Map cloud trades to local format and merge (avoid duplicates by cloud_id)
+  const existingCloudIds = new Set(trades.filter(t => t.cloud_id).map(t => t.cloud_id));
+  let added = 0;
+  data.forEach(ct => {
+    if (existingCloudIds.has(ct.id)) return; // already synced
+    trades.unshift({
+      id: ct.local_id || (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random()),
+      cloud_id: ct.id,
+      timestamp: ct.created_at,
+      pair: ct.symbol || ct.pair || "UNKNOWN",
+      direction: ct.trade_type === "long" ? "long" : "short",
+      entry: ct.entry_price || 0,
+      pnl: ct.pnl || 0,
+      netPnl: ct.pnl || 0,
+      grossPnl: ct.pnl || 0,
+      result: ct.pnl > 0 ? "Win" : ct.pnl < 0 ? "Loss" : "BE",
+      notes: ct.notes || "",
+      tags: { psych: ct.emotion_tag ? [ct.emotion_tag] : [] },
+      behaviors: ct.emotion_tag ? [ct.emotion_tag] : [],
+      date: ct.created_at,
+      riskAdherent: true,
+      position_size: ct.position_size || 0,
+      posSize: ct.position_size || 0,
+      strategy: ct.strategy || "",
+      exitPrice: ct.exit_price || 0,
+      entryPrice: ct.entry_price || 0,
+      balanceAfter: 0, riskPct: 0, rrr: 0, totalFees: 0,
+      entryValue: 0, exitValue: 0, holdMinutes: null,
+    });
+    added++;
+  });
+  if (added > 0) {
+    save();
+    renderAll();
+    showToast(`☁️ Synced ${added} trade${added > 1 ? "s" : ""} from cloud`);
   }
-
-  const container = document.getElementById("tradeList")
-  container.innerHTML = ""
-
-  data.forEach(trade => {
-    const pnlColor = trade.pnl > 0 ? "#00ff88" : trade.pnl < 0 ? "#ff4d4d" : "#aaa"
-    container.innerHTML += `
-      <div style="
-        background:#1a2332;
-        border:1px solid #2a3a4a;
-        border-radius:8px;
-        padding:10px 14px;
-        font-family:monospace;
-        font-size:13px;
-        color:#ccc;
-        display:flex;
-        gap:16px;
-        flex-wrap:wrap;
-        align-items:center;
-      ">
-        <span style="color:#00bfff;font-weight:bold;">${trade.symbol}</span>
-        <span style="color:#aaa;">${trade.trade_type?.toUpperCase()}</span>
-        <span>PnL: <strong style="color:${pnlColor};">${trade.pnl ?? "—"}</strong></span>
-        <span>Strategy: ${trade.strategy ?? "—"}</span>
-        <span style="color:#666;font-size:11px;">${trade.created_at ? new Date(trade.created_at).toLocaleDateString() : ""}</span>
-      </div>
-    `
-  })
 }
 
-// Auto-load trades if already logged in
+// ── Trades: Save to Cloud (called after local save) ───────────
+async function saveTradeToCloud(trade) {
+  if (!supabaseUser) return;
+  const { data, error } = await supabaseClient
+    .from("trades")
+    .insert([{
+      user_id:          supabaseUser.id,
+      local_id:         trade.id,
+      symbol:           trade.pair,
+      trade_type:       trade.direction,
+      entry_price:      trade.entry || trade.entryPrice || 0,
+      exit_price:       trade.exitPrice || trade.effectiveExit || 0,
+      position_size:    trade.posSize || trade.position_size || 0,
+      pnl:              trade.netPnl || trade.pnl || 0,
+      strategy:         trade.strategy || (trade.tags?.setup?.[0] || ""),
+      notes:            trade.notes || "",
+      emotion_tag:      (trade.behaviors || trade.tags?.psych || [])[0] || null,
+      setup_quality:    null,
+      discipline_score: trade.riskAdherent ? 10 : 5
+    }])
+  if (error) { console.warn("Cloud save error (trade still saved locally):", error.message); }
+  else {
+    // Store cloud id back on local trade
+    if (data && data[0]) {
+      const idx = trades.findIndex(t => t.id === trade.id);
+      if (idx > -1) { trades[idx].cloud_id = data[0].id; save(); }
+    }
+  }
+}
+
+// ── Init: check session on load ───────────────────────────────
 supabaseClient.auth.getSession().then(({ data }) => {
   if (data.session) {
-    loadTrades()
+    updateAuthUI(data.session.user);
+    syncTradesFromCloud();
   }
-})
+});
+
+// Listen for auth changes
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  updateAuthUI(session ? session.user : null);
+});
 </script>
 </body>
 </html>
