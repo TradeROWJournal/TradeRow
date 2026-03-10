@@ -6273,7 +6273,7 @@ async function agRegister() {
   if (password !== confirm)  { agMsg('Passwords do not match.', true); return; }
   if (password.length < 6)   { agMsg('Password must be at least 6 characters.', true); return; }
   agMsg('Creating account…', false);
-  const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: "https://traderowjournal.github.io/TradeRow/" } });
+  const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: "https://trade-row.vercel.app" } });
   if (error) { agMsg('Sign up failed: ' + error.message, true); return; }
   // Supabase may auto-confirm or require email verification
   if (data.session) {
