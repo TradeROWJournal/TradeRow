@@ -1,0 +1,2014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradeROW — The Trading Journal Built for Discipline</title>
+<meta name="description" content="TradeROW is the AI-powered trading journal that tracks every trade, monitors your psychology, enforces your rules, and ranks you globally. Free forever.">
+<meta property="og:title" content="TradeROW — The Trading Journal Built for Discipline">
+<meta property="og:description" content="Track trades. Kill tilt. Climb the ranks. Free forever.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #060A0F;
+  --bg2:      #0A0F16;
+  --bg3:      #0D1520;
+  --surface:  #0F1A28;
+  --surface2: #142236;
+  --border:   rgba(0,191,255,0.12);
+  --border2:  rgba(0,191,255,0.22);
+  --accent:   #00BFFF;
+  --accent2:  #0090CC;
+  --gold:     #FFD700;
+  --win:      #00FF7F;
+  --loss:     #FF4C4C;
+  --text:     #E2EAF4;
+  --muted:    #5A7A9A;
+  --dim:      #2A3F55;
+  --font-h:   'Orbitron', monospace;
+  --font-b:   'Rajdhani', sans-serif;
+  --font-m:   'Space Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-b);
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ─── NOISE OVERLAY ─────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+}
+
+/* ─── SCROLLBAR ──────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--accent2); border-radius: 2px; }
+
+/* ─── NAV ────────────────────────────────────────── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 48px;
+  background: rgba(6,10,15,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-logo {
+  font-family: var(--font-h);
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--accent);
+  text-shadow: 0 0 20px rgba(0,191,255,0.4);
+  letter-spacing: 3px;
+  text-decoration: none;
+}
+.nav-logo span { color: var(--text); opacity: 0.5; }
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  list-style: none;
+}
+.nav-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-family: var(--font-b);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--accent); }
+.nav-cta {
+  background: var(--accent);
+  color: #000 !important;
+  padding: 8px 24px;
+  border-radius: 3px;
+  font-weight: 700 !important;
+  font-family: var(--font-h) !important;
+  font-size: 11px !important;
+  letter-spacing: 2px !important;
+  transition: box-shadow 0.2s, transform 0.2s !important;
+}
+.nav-cta:hover {
+  box-shadow: 0 0 20px rgba(0,191,255,0.5) !important;
+  transform: translateY(-1px);
+  color: #000 !important;
+}
+
+/* ─── HERO ───────────────────────────────────────── */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  padding: 140px 32px 80px;
+  overflow: hidden;
+}
+
+/* Grid background */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,191,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,191,255,0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black, transparent);
+}
+
+/* Glow orbs */
+.hero-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+.hero-orb-1 {
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(0,191,255,0.08), transparent 70%);
+  top: -100px; left: 50%;
+  transform: translateX(-50%);
+}
+.hero-orb-2 {
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(255,215,0,0.05), transparent 70%);
+  bottom: 0; right: 10%;
+}
+.hero-orb-3 {
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(0,255,127,0.04), transparent 70%);
+  top: 30%; left: 5%;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0,191,255,0.08);
+  border: 1px solid rgba(0,191,255,0.25);
+  border-radius: 30px;
+  padding: 6px 18px;
+  font-family: var(--font-h);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 28px;
+  position: relative;
+  z-index: 1;
+  animation: fadeInDown 0.8s ease both;
+}
+.hero-badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--win);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--win);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.hero h1 {
+  font-family: var(--font-h);
+  font-size: clamp(42px, 7vw, 90px);
+  font-weight: 900;
+  line-height: 1.0;
+  letter-spacing: -1px;
+  position: relative;
+  z-index: 1;
+  animation: fadeInUp 0.8s 0.1s ease both;
+}
+.hero h1 .line1 {
+  display: block;
+  color: var(--text);
+}
+.hero h1 .accent-word {
+  color: var(--accent);
+  text-shadow: 0 0 40px rgba(0,191,255,0.35);
+}
+.hero h1 .line2 {
+  display: block;
+  color: var(--muted);
+  font-size: 0.55em;
+  font-weight: 500;
+  letter-spacing: 6px;
+  margin-top: 8px;
+  text-transform: uppercase;
+}
+
+.hero-sub {
+  font-family: var(--font-b);
+  font-size: clamp(16px, 2vw, 22px);
+  font-weight: 400;
+  color: var(--muted);
+  max-width: 600px;
+  margin: 28px auto 40px;
+  line-height: 1.7;
+  position: relative;
+  z-index: 1;
+  animation: fadeInUp 0.8s 0.2s ease both;
+}
+.hero-sub strong { color: var(--text); font-weight: 600; }
+
+.hero-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+  animation: fadeInUp 0.8s 0.3s ease both;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--accent);
+  color: #000;
+  font-family: var(--font-h);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 16px 36px;
+  border-radius: 3px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 0 30px rgba(0,191,255,0.2);
+}
+.btn-primary:hover {
+  box-shadow: 0 0 50px rgba(0,191,255,0.45);
+  transform: translateY(-2px);
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-h);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 15px 32px;
+  border-radius: 3px;
+  text-decoration: none;
+  border: 1px solid var(--border2);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 20px rgba(0,191,255,0.1);
+}
+
+/* ─── STAT BAR ───────────────────────────────────── */
+.stat-bar {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 80px auto 0;
+  max-width: 900px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+  animation: fadeInUp 0.8s 0.4s ease both;
+}
+.stat-item {
+  flex: 1;
+  min-width: 150px;
+  padding: 24px 28px;
+  border-right: 1px solid var(--border);
+  background: rgba(13,21,32,0.6);
+  text-align: center;
+  position: relative;
+}
+.stat-item:last-child { border-right: none; }
+.stat-item::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+.stat-item:nth-child(1)::before { background: var(--accent); }
+.stat-item:nth-child(2)::before { background: var(--gold); }
+.stat-item:nth-child(3)::before { background: var(--win); }
+.stat-item:nth-child(4)::before { background: #FF4C4C; }
+.stat-num {
+  font-family: var(--font-h);
+  font-size: 30px;
+  font-weight: 900;
+  color: var(--text);
+  display: block;
+}
+.stat-label {
+  font-family: var(--font-b);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-top: 4px;
+  display: block;
+}
+
+/* ─── SECTIONS ───────────────────────────────────── */
+section {
+  position: relative;
+  z-index: 1;
+}
+
+.section-label {
+  font-family: var(--font-h);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.section-label::before, .section-label::after {
+  content: '';
+  height: 1px;
+  background: var(--border2);
+  flex: 0 0 30px;
+}
+
+.section-title {
+  font-family: var(--font-h);
+  font-size: clamp(28px, 4vw, 48px);
+  font-weight: 900;
+  color: var(--text);
+  line-height: 1.1;
+  margin-bottom: 20px;
+}
+.section-title .accent { color: var(--accent); }
+.section-title .gold { color: var(--gold); }
+
+.section-desc {
+  font-size: clamp(16px, 1.5vw, 19px);
+  color: var(--muted);
+  max-width: 600px;
+  line-height: 1.7;
+}
+
+/* ─── QUICK FEATURES STRIP ───────────────────────── */
+.features-strip {
+  padding: 60px 48px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.strip-item {
+  background: var(--bg2);
+  padding: 36px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: background 0.2s;
+}
+.strip-item:hover { background: var(--surface); }
+.strip-icon { font-size: 28px; }
+.strip-name {
+  font-family: var(--font-h);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 1px;
+}
+.strip-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ─── SHOWCASE SECTION ───────────────────────────── */
+.showcase {
+  padding: 100px 48px;
+  max-width: 1300px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+.showcase.reverse { direction: rtl; }
+.showcase.reverse > * { direction: ltr; }
+.showcase-text { max-width: 480px; }
+.showcase-text .section-label { justify-content: flex-start; }
+.showcase-text .section-label::before { display: none; }
+.feature-list {
+  list-style: none;
+  margin-top: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.feature-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.5;
+}
+.feature-list li::before {
+  content: '▸';
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* ─── MOCK SCREEN ────────────────────────────────── */
+.mock-wrap {
+  position: relative;
+}
+.mock-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(ellipse at center, rgba(0,191,255,0.07), transparent 70%);
+  pointer-events: none;
+}
+.mock-screen {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 20px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,191,255,0.08);
+  position: relative;
+}
+.mock-titlebar {
+  background: rgba(0,0,0,0.4);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot-r { background: #FF5F57; }
+.dot-y { background: #FFBD2E; }
+.dot-g { background: #28C840; }
+.mock-title-text {
+  font-family: var(--font-h);
+  font-size: 8px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  margin-left: 8px;
+}
+
+/* ─── TILT METER MOCK ────────────────────────────── */
+.tilt-mock-body { padding: 24px; }
+.tilt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.tilt-title {
+  font-family: var(--font-h);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--accent);
+}
+.tilt-level-badge {
+  background: rgba(255,76,76,0.15);
+  border: 1px solid rgba(255,76,76,0.35);
+  color: #FF4C4C;
+  font-family: var(--font-h);
+  font-size: 8px;
+  letter-spacing: 1px;
+  padding: 4px 10px;
+  border-radius: 2px;
+}
+.tilt-bar-wrap {
+  background: rgba(0,0,0,0.4);
+  border-radius: 3px;
+  height: 12px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  position: relative;
+}
+.tilt-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+  transition: width 1s ease;
+}
+.tilt-bar-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  animation: shimmer 2s infinite;
+}
+@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.tilt-75 { background: linear-gradient(90deg, #FFD700, #FF4C4C); width: 75%; }
+.tilt-30 { background: linear-gradient(90deg, #00BFFF, #FFD700); width: 30%; }
+.tilt-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-h);
+  font-size: 7px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-bottom: 20px;
+}
+.tilt-events {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tilt-event {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 4px;
+  border-left: 2px solid;
+  font-size: 11px;
+}
+.ev-warn { border-color: #FF4C4C; }
+.ev-ok { border-color: var(--win); }
+.ev-caution { border-color: var(--gold); }
+.tilt-event-label { color: var(--text); flex: 1; font-weight: 600; }
+.tilt-event-pts { font-family: var(--font-m); font-size: 10px; }
+.pts-bad { color: #FF4C4C; }
+.pts-good { color: var(--win); }
+.tilt-lock-bar {
+  margin-top: 16px;
+  background: rgba(255,76,76,0.08);
+  border: 1px solid rgba(255,76,76,0.3);
+  border-radius: 4px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.lock-icon { font-size: 20px; }
+.lock-text { font-family: var(--font-h); font-size: 9px; color: #FF4C4C; letter-spacing: 1px; }
+.lock-sub { font-size: 10px; color: var(--muted); margin-top: 3px; }
+.tilt-quiz-hint {
+  margin-top: 10px;
+  font-size: 10px;
+  color: var(--gold);
+  text-align: center;
+  font-family: var(--font-h);
+  letter-spacing: 1px;
+}
+
+/* ─── ANALYTICS MOCK ──────────────────────────────── */
+.analytics-mock-body { padding: 24px; }
+.analytics-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.a-stat {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+  text-align: center;
+}
+.a-stat-val {
+  font-family: var(--font-h);
+  font-size: 18px;
+  font-weight: 900;
+  display: block;
+}
+.a-stat-lbl {
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 2px;
+  display: block;
+}
+.chart-area {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 14px;
+  height: 140px;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  position: relative;
+  overflow: hidden;
+}
+.chart-area::before {
+  content: '';
+  position: absolute;
+  bottom: 30px;
+  left: 0; right: 0;
+  height: 1px;
+  border-top: 1px dashed rgba(255,255,255,0.06);
+}
+.bar {
+  flex: 1;
+  border-radius: 2px 2px 0 0;
+  min-width: 10px;
+  position: relative;
+  transition: height 0.6s ease;
+}
+.bar-w { background: linear-gradient(180deg, var(--win), rgba(0,255,127,0.4)); }
+.bar-l { background: linear-gradient(180deg, var(--loss), rgba(255,76,76,0.4)); }
+.chart-line-overlay {
+  position: absolute;
+  inset: 14px;
+  pointer-events: none;
+}
+.mini-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+.mini-stat {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ms-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.ms-val { font-family: var(--font-h); font-size: 14px; font-weight: 700; }
+
+/* ─── RANK SECTION ────────────────────────────────── */
+.rank-section {
+  padding: 100px 48px;
+  text-align: center;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 50%, var(--bg) 100%);
+}
+.rank-section .section-label { justify-content: center; }
+.rank-tiers {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 60px;
+}
+.rank-card {
+  width: 100px;
+  padding: 24px 16px;
+  border-radius: 6px;
+  border: 1px solid;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+  transition: transform 0.2s;
+}
+.rank-card:hover { transform: translateY(-6px); }
+.rank-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.rank-letter {
+  font-family: var(--font-h);
+  font-size: 42px;
+  font-weight: 900;
+  line-height: 1;
+  display: block;
+}
+.rank-name {
+  font-family: var(--font-b);
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 6px;
+  display: block;
+}
+.rank-msg {
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 8px;
+  line-height: 1.4;
+  display: block;
+}
+
+/* ─── FEATURE GRID ────────────────────────────────── */
+.feature-grid-section {
+  padding: 100px 48px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  margin-top: 60px;
+}
+.feature-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 32px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s;
+}
+.feature-card:hover { border-color: var(--border2); background: var(--surface); }
+.feature-card:hover::before { transform: scaleX(1); }
+.fc-icon { font-size: 32px; margin-bottom: 16px; display: block; }
+.fc-title {
+  font-family: var(--font-h);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+.fc-desc { font-size: 14px; color: var(--muted); line-height: 1.6; }
+.fc-tag {
+  display: inline-block;
+  margin-top: 14px;
+  background: rgba(0,191,255,0.08);
+  border: 1px solid rgba(0,191,255,0.2);
+  color: var(--accent);
+  font-family: var(--font-h);
+  font-size: 8px;
+  letter-spacing: 2px;
+  padding: 3px 10px;
+  border-radius: 2px;
+}
+
+/* ─── LEADERBOARD MOCK ────────────────────────────── */
+.lb-mock-body { padding: 20px; }
+.lb-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.lb-title {
+  font-family: var(--font-h);
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--gold);
+  text-shadow: 0 0 10px rgba(255,215,0,0.3);
+}
+.lb-live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-h);
+  font-size: 8px;
+  color: var(--win);
+  letter-spacing: 1px;
+}
+.lb-live-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--win);
+  box-shadow: 0 0 6px var(--win);
+  animation: pulse 2s infinite;
+}
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+.lb-row:hover { border-color: var(--border); }
+.lb-row.me {
+  background: rgba(0,191,255,0.06);
+  border-color: rgba(0,191,255,0.2);
+}
+.lb-pos {
+  font-family: var(--font-h);
+  font-size: 12px;
+  font-weight: 700;
+  width: 24px;
+  text-align: center;
+}
+.lb-rank-badge {
+  font-family: var(--font-h);
+  font-size: 14px;
+  font-weight: 900;
+  width: 28px;
+  text-align: center;
+}
+.lb-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); }
+.lb-sub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.lb-score { font-family: var(--font-m); font-size: 11px; }
+.lb-pnl { font-family: var(--font-m); font-size: 11px; color: var(--win); width: 60px; text-align: right; }
+
+/* ─── SMART SEARCH MOCK ───────────────────────────── */
+.search-mock-body { padding: 24px; }
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(0,191,255,0.25);
+  border-radius: 5px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+.search-icon { font-size: 16px; }
+.search-text {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+  font-family: var(--font-b);
+}
+.search-cursor {
+  width: 2px;
+  height: 16px;
+  background: var(--accent);
+  animation: blink 1s infinite;
+}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.search-result {
+  padding: 12px 14px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.search-result.top { border-color: rgba(0,191,255,0.25); background: rgba(0,191,255,0.04); }
+.sr-score {
+  font-family: var(--font-h);
+  font-size: 10px;
+  color: var(--accent);
+  min-width: 30px;
+  text-align: center;
+}
+.sr-info { flex: 1; }
+.sr-pair { font-size: 12px; font-weight: 700; color: var(--text); }
+.sr-note { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.sr-pnl { font-family: var(--font-m); font-size: 11px; }
+
+/* ─── TRADER TYPES ────────────────────────────────── */
+.trader-types-section {
+  padding: 100px 48px;
+  text-align: center;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.trader-types-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  max-width: 1100px;
+  margin: 60px auto 0;
+}
+.tt-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 28px 20px;
+  transition: all 0.3s;
+  cursor: default;
+}
+.tt-card:hover {
+  border-color: var(--border2);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+.tt-icon { font-size: 36px; margin-bottom: 12px; display: block; }
+.tt-name {
+  font-family: var(--font-h);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  display: block;
+}
+.tt-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.tt-special {
+  border-color: rgba(0,191,255,0.3);
+  background: rgba(0,191,255,0.04);
+  position: relative;
+  overflow: hidden;
+}
+.tt-special::before {
+  content: 'NEW';
+  position: absolute;
+  top: 10px; right: -24px;
+  background: var(--accent);
+  color: #000;
+  font-family: var(--font-h);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 3px 28px;
+  transform: rotate(45deg);
+}
+
+/* ─── TESTIMONIAL / QUOTE ─────────────────────────── */
+.quote-section {
+  padding: 100px 48px;
+  text-align: center;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.quote-text {
+  font-family: var(--font-h);
+  font-size: clamp(18px, 2.5vw, 30px);
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.5;
+  letter-spacing: -0.5px;
+  position: relative;
+}
+.quote-text::before {
+  content: '"';
+  font-size: 120px;
+  color: rgba(0,191,255,0.08);
+  position: absolute;
+  top: -40px;
+  left: -20px;
+  font-family: Georgia, serif;
+  line-height: 1;
+}
+.quote-accent { color: var(--accent); }
+.quote-author {
+  margin-top: 32px;
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-family: var(--font-h);
+}
+
+/* ─── INTEGRATIONS ─────────────────────────────────── */
+.integrations-section {
+  padding: 80px 48px;
+  text-align: center;
+  border-top: 1px solid var(--border);
+}
+.integrations-grid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-top: 40px;
+}
+.integ-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--font-h);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+.integ-chip:hover {
+  border-color: var(--border2);
+  color: var(--text);
+}
+.integ-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+}
+
+/* ─── CTA SECTION ─────────────────────────────────── */
+.cta-section {
+  padding: 120px 48px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.cta-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 100%, rgba(0,191,255,0.07), transparent),
+    radial-gradient(ellipse 40% 40% at 50% 0%, rgba(255,215,0,0.04), transparent);
+}
+.cta-section::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+.cta-section h2 {
+  font-family: var(--font-h);
+  font-size: clamp(32px, 5vw, 64px);
+  font-weight: 900;
+  line-height: 1.1;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+}
+.cta-section p {
+  font-size: 18px;
+  color: var(--muted);
+  margin-bottom: 44px;
+  position: relative;
+  z-index: 1;
+}
+.cta-section .hero-actions { position: relative; z-index: 1; }
+.free-badge {
+  display: inline-block;
+  margin-top: 20px;
+  font-family: var(--font-h);
+  font-size: 10px;
+  color: var(--win);
+  letter-spacing: 2px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── FAQ ─────────────────────────────────────────── */
+.faq-section {
+  padding: 100px 48px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+.faq-item {
+  border-bottom: 1px solid var(--border);
+  padding: 28px 0;
+}
+.faq-item:first-of-type { border-top: 1px solid var(--border); }
+.faq-q {
+  font-family: var(--font-h);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  user-select: none;
+}
+.faq-q::after {
+  content: '+';
+  font-size: 24px;
+  color: var(--accent);
+  line-height: 1;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.faq-item.open .faq-q::after { transform: rotate(45deg); }
+.faq-a {
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.7;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+}
+.faq-item.open .faq-a { max-height: 300px; padding-top: 14px; }
+
+/* ─── FOOTER ──────────────────────────────────────── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 60px 48px 40px;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  gap: 48px;
+}
+.footer-brand .nav-logo { font-size: 22px; display: block; margin-bottom: 14px; }
+.footer-brand p { font-size: 13px; color: var(--muted); line-height: 1.6; max-width: 260px; }
+.footer-col h4 {
+  font-family: var(--font-h);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.footer-col a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.2s;
+}
+.footer-col a:hover { color: var(--accent); }
+.footer-bottom {
+  border-top: 1px solid var(--border);
+  padding: 24px 48px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--dim);
+  font-family: var(--font-h);
+  letter-spacing: 1px;
+}
+
+/* ─── ANIMATIONS ──────────────────────────────────── */
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Scroll reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+
+/* ─── RESPONSIVE ──────────────────────────────────── */
+@media (max-width: 900px) {
+  nav { padding: 14px 24px; }
+  .nav-links { display: none; }
+  .showcase { grid-template-columns: 1fr; gap: 48px; padding: 60px 24px; }
+  .showcase.reverse { direction: ltr; }
+  .features-strip { padding: 40px 24px; }
+  .rank-section, .feature-grid-section, .trader-types-section,
+  .faq-section, .cta-section, .integrations-section { padding: 60px 24px; }
+  footer { grid-template-columns: 1fr 1fr; padding: 48px 24px 32px; }
+  .footer-bottom { padding: 20px 24px; flex-direction: column; gap: 12px; text-align: center; }
+  .stat-bar { flex-direction: column; }
+  .stat-item { border-right: none; border-bottom: 1px solid var(--border); }
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════
+  NAV
+═══════════════════════════════════════════════════════ -->
+<nav>
+  <a href="#" class="nav-logo">TRADE<span>ROW</span></a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#tilt">Tilt Meter</a></li>
+    <li><a href="#analytics">Analytics</a></li>
+    <li><a href="#ranks">Ranks</a></li>
+    <li><a href="#faq">FAQ</a></li>
+    <li><a href="index.html" class="nav-cta">Launch App →</a></li>
+  </ul>
+</nav>
+
+<!-- ════════════════════════════════════════════════════
+  HERO
+═══════════════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-orb hero-orb-1"></div>
+  <div class="hero-orb hero-orb-2"></div>
+  <div class="hero-orb hero-orb-3"></div>
+
+  <div class="hero-badge">
+    <span></span>
+    Free · No Credit Card · Live Now
+  </div>
+
+  <h1>
+    <span class="line1">The Journal That<br><span class="accent-word">Fights Back</span></span>
+    <span class="line2">Trade. Reflect. Dominate.</span>
+  </h1>
+
+  <p class="hero-sub">
+    TradeROW is the only trading journal with a <strong>live Tilt Meter</strong>,
+    <strong>discipline enforcement</strong>, <strong>AI semantic search</strong>,
+    and a <strong>ranked global leaderboard</strong>. Built for serious traders.
+  </p>
+
+  <div class="hero-actions">
+    <a href="index.html" class="btn-primary">
+      ⚡ Start Logging Free
+    </a>
+    <a href="#features" class="btn-ghost">
+      See Features ↓
+    </a>
+  </div>
+
+  <div class="stat-bar">
+    <div class="stat-item">
+      <span class="stat-num">21</span>
+      <span class="stat-label">Rank Tiers</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">100+</span>
+      <span class="stat-label">Analytics Metrics</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">6</span>
+      <span class="stat-label">Trader Profiles</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">0</span>
+      <span class="stat-label">Cost Forever</span>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════
+  QUICK FEATURES STRIP
+═══════════════════════════════════════════════════════ -->
+<div class="features-strip" id="features">
+  <div class="strip-item reveal">
+    <span class="strip-icon">📊</span>
+    <span class="strip-name">Deep Analytics</span>
+    <p class="strip-desc">Win rate, avg RR, drawdown, session P&L, behavior heatmaps and more.</p>
+  </div>
+  <div class="strip-item reveal reveal-delay-1">
+    <span class="strip-icon">🌡</span>
+    <span class="strip-name">Tilt Meter</span>
+    <p class="strip-desc">Real-time emotional tracking. Auto-locks your journal when tilt is critical.</p>
+  </div>
+  <div class="strip-item reveal reveal-delay-2">
+    <span class="strip-icon">🧠</span>
+    <span class="strip-name">AI Smart Search</span>
+    <p class="strip-desc">Find trades by meaning. "FOMO entries after a loss" — it understands you.</p>
+  </div>
+  <div class="strip-item reveal reveal-delay-3">
+    <span class="strip-icon">🏆</span>
+    <span class="strip-name">Global Leaderboard</span>
+    <p class="strip-desc">Compete globally on discipline score, win rate, and P&L performance.</p>
+  </div>
+  <div class="strip-item reveal reveal-delay-1">
+    <span class="strip-icon">🔒</span>
+    <span class="strip-name">Discipline Lock</span>
+    <p class="strip-desc">Mandatory quiz before unlocking. You can't bypass your own rules.</p>
+  </div>
+  <div class="strip-item reveal reveal-delay-2">
+    <span class="strip-icon">⚡</span>
+    <span class="strip-name">XP & Quests</span>
+    <p class="strip-desc">Level up through consistent, disciplined trading. Earn rank with proof.</p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+  TILT METER SHOWCASE
+═══════════════════════════════════════════════════════ -->
+<section id="tilt">
+  <div class="showcase">
+    <div class="showcase-text reveal">
+      <p class="section-label">Core Feature</p>
+      <h2 class="section-title">The <span class="accent">Tilt Meter</span><br>That Locks You Out</h2>
+      <p class="section-desc">
+        Most journals just record your losses. TradeROW actively monitors your emotional state in real time and intervenes before you blow your account.
+      </p>
+      <ul class="feature-list">
+        <li>Tilt level builds with revenge trades, overtrading, and risk violations</li>
+        <li>At 100% — your journal locks. No new trades until you cool down</li>
+        <li>4-question randomized quiz to unlock — you must prove you understand your rules</li>
+        <li>Auto-resets every morning at midnight in <em>your</em> timezone</li>
+        <li>Rank penalty on every tilt lock activation — it costs you progress</li>
+      </ul>
+    </div>
+    <div class="mock-wrap reveal reveal-delay-1">
+      <div class="mock-screen">
+        <div class="mock-titlebar">
+          <div class="dot dot-r"></div>
+          <div class="dot dot-y"></div>
+          <div class="dot dot-g"></div>
+          <span class="mock-title-text">TILT MONITOR — LIVE</span>
+        </div>
+        <div class="tilt-mock-body">
+          <div class="tilt-header">
+            <span class="tilt-title">⚠ TILT LEVEL</span>
+            <span class="tilt-level-badge">● CRITICAL — 75%</span>
+          </div>
+          <div class="tilt-bar-wrap">
+            <div class="tilt-bar-fill tilt-75"></div>
+          </div>
+          <div class="tilt-labels">
+            <span>STABLE</span><span>ELEVATED</span><span>CRITICAL</span>
+          </div>
+          <div class="tilt-events">
+            <div class="tilt-event ev-warn">
+              <span class="tilt-event-label">Revenge Trade detected</span>
+              <span class="tilt-event-pts pts-bad">+35 TILT</span>
+            </div>
+            <div class="tilt-event ev-warn">
+              <span class="tilt-event-label">Risk violation — 4.2% used vs 2% limit</span>
+              <span class="tilt-event-pts pts-bad">+25 TILT</span>
+            </div>
+            <div class="tilt-event ev-caution">
+              <span class="tilt-event-label">3rd consecutive loss</span>
+              <span class="tilt-event-pts pts-bad">+15 TILT</span>
+            </div>
+            <div class="tilt-event ev-ok">
+              <span class="tilt-event-label">Plan Followed — tilt reduced</span>
+              <span class="tilt-event-pts pts-good">-10 TILT</span>
+            </div>
+          </div>
+          <div class="tilt-lock-bar">
+            <span class="lock-icon">🔒</span>
+            <div>
+              <div class="lock-text">DISCIPLINE LOCK ACTIVE</div>
+              <div class="lock-sub">Cooldown remaining: 03:22:14 — or pass the quiz to unlock</div>
+            </div>
+          </div>
+          <div class="tilt-quiz-hint">→ UNLOCK JOURNAL — PASS DISCIPLINE QUIZ</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════
+  ANALYTICS SHOWCASE
+═══════════════════════════════════════════════════════ -->
+<section id="analytics" style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+  <div class="showcase reverse">
+    <div class="mock-wrap reveal">
+      <div class="mock-screen">
+        <div class="mock-titlebar">
+          <div class="dot dot-r"></div>
+          <div class="dot dot-y"></div>
+          <div class="dot dot-g"></div>
+          <span class="mock-title-text">ANALYTICS — DEEP STATS</span>
+        </div>
+        <div class="analytics-mock-body">
+          <div class="analytics-stats-row">
+            <div class="a-stat">
+              <span class="a-stat-val" style="color:var(--win)">68%</span>
+              <span class="a-stat-lbl">Win Rate</span>
+            </div>
+            <div class="a-stat">
+              <span class="a-stat-val" style="color:var(--accent)">2.4R</span>
+              <span class="a-stat-lbl">Avg R:R</span>
+            </div>
+            <div class="a-stat">
+              <span class="a-stat-val" style="color:var(--gold)">87</span>
+              <span class="a-stat-lbl">Disc. Score</span>
+            </div>
+            <div class="a-stat">
+              <span class="a-stat-val" style="color:var(--win)">+$2,841</span>
+              <span class="a-stat-lbl">Net P&L</span>
+            </div>
+          </div>
+          <!-- Bar chart mockup -->
+          <div class="chart-area">
+            <div class="bar bar-w" style="height:55%"></div>
+            <div class="bar bar-l" style="height:35%"></div>
+            <div class="bar bar-w" style="height:75%"></div>
+            <div class="bar bar-w" style="height:60%"></div>
+            <div class="bar bar-l" style="height:40%"></div>
+            <div class="bar bar-w" style="height:90%"></div>
+            <div class="bar bar-w" style="height:65%"></div>
+            <div class="bar bar-l" style="height:25%"></div>
+            <div class="bar bar-w" style="height:80%"></div>
+            <div class="bar bar-w" style="height:70%"></div>
+            <div class="bar bar-w" style="height:95%"></div>
+            <div class="bar bar-l" style="height:30%"></div>
+            <div class="bar bar-w" style="height:85%"></div>
+            <svg class="chart-line-overlay" viewBox="0 0 300 120" preserveAspectRatio="none">
+              <polyline points="11,65 33,42 55,30 77,36 99,72 121,14 143,24 165,90 187,20 209,30 231,5 253,72 275,15" fill="none" stroke="rgba(0,191,255,0.35)" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <div class="mini-stats-grid">
+            <div class="mini-stat">
+              <span class="ms-label">Best Session</span>
+              <span class="ms-val" style="color:var(--win)">London</span>
+            </div>
+            <div class="mini-stat">
+              <span class="ms-label">Streak</span>
+              <span class="ms-val" style="color:var(--gold)">7W 🔥</span>
+            </div>
+            <div class="mini-stat">
+              <span class="ms-label">Max Drawdown</span>
+              <span class="ms-val" style="color:var(--loss)">-3.2%</span>
+            </div>
+            <div class="mini-stat">
+              <span class="ms-label">Avg Hold</span>
+              <span class="ms-val" style="color:var(--accent)">2h 14m</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="showcase-text reveal reveal-delay-1">
+      <p class="section-label">Performance Intelligence</p>
+      <h2 class="section-title">Analytics That<br><span class="accent">Actually Matter</span></h2>
+      <p class="section-desc">
+        Stop guessing why you're losing. TradeROW breaks down every trade across sessions, pairs, mindset states, and time — so you can see exactly where your edge lives.
+      </p>
+      <ul class="feature-list">
+        <li>P&L by session: Asia, London, NY AM, NY PM</li>
+        <li>Behavior analysis — which emotions cost you the most?</li>
+        <li>R:R distribution chart — are you actually taking good setups?</li>
+        <li>Monthly and yearly report cards with best/worst day</li>
+        <li>What-If simulator — replay without bad trades</li>
+        <li>Risk adherence tracking per your set guardrails</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════
+  SMART SEARCH SHOWCASE
+═══════════════════════════════════════════════════════ -->
+<section>
+  <div class="showcase">
+    <div class="showcase-text reveal">
+      <p class="section-label">AI-Powered · Pinecone</p>
+      <h2 class="section-title"><span class="accent">Smart Search</span><br>Finds What You Felt</h2>
+      <p class="section-desc">
+        Every trade you log gets indexed with AI. Search your entire history using plain language — not just keywords.
+      </p>
+      <ul class="feature-list">
+        <li>Powered by Pinecone vector database — semantic understanding</li>
+        <li>Search by emotion: "trades where I broke my plan"</li>
+        <li>Search by context: "BTC short during high volatility"</li>
+        <li>Results ranked by relevance, not just date</li>
+        <li>Works across notes, pairs, behaviors, and session tags</li>
+      </ul>
+    </div>
+    <div class="mock-wrap reveal reveal-delay-1">
+      <div class="mock-screen">
+        <div class="mock-titlebar">
+          <div class="dot dot-r"></div>
+          <div class="dot dot-y"></div>
+          <div class="dot dot-g"></div>
+          <span class="mock-title-text">🧠 AI SMART SEARCH</span>
+        </div>
+        <div class="search-mock-body">
+          <div class="search-bar">
+            <span class="search-icon">🧠</span>
+            <span class="search-text">FOMO entries right after a losing streak</span>
+            <span class="search-cursor"></span>
+          </div>
+          <div style="font-size:10px;color:var(--win);font-family:var(--font-h);letter-spacing:1px;margin-bottom:12px;">✓ Found 6 semantically similar trades</div>
+          <div class="search-result top">
+            <div class="sr-score">99%</div>
+            <div class="sr-info">
+              <div class="sr-pair">BTCUSDT · Long · Asia Session</div>
+              <div class="sr-note">Entered after 3 losses. Felt I needed to recover. Ignored my setup criteria.</div>
+            </div>
+            <span class="sr-pnl" style="color:var(--loss)">-$312</span>
+          </div>
+          <div class="search-result top">
+            <div class="sr-score">94%</div>
+            <div class="sr-info">
+              <div class="sr-pair">ETHUSDT · Long · London</div>
+              <div class="sr-note">Chased the move. No SL placed initially. FOMO + revenge mindset.</div>
+            </div>
+            <span class="sr-pnl" style="color:var(--loss)">-$187</span>
+          </div>
+          <div class="search-result">
+            <div class="sr-score">87%</div>
+            <div class="sr-info">
+              <div class="sr-pair">EURUSD · Short · NY AM</div>
+              <div class="sr-note">Back-to-back losses then over-leveraged. Closed at break-even lucky.</div>
+            </div>
+            <span class="sr-pnl" style="color:var(--muted)">$0.00</span>
+          </div>
+          <div class="search-result">
+            <div class="sr-score">81%</div>
+            <div class="sr-info">
+              <div class="sr-pair">SOLUSDT · Long · Asia</div>
+              <div class="sr-note">Didn't wait for confirmation. Size was 2x my plan. Still won but wrong process.</div>
+            </div>
+            <span class="sr-pnl" style="color:var(--win)">+$94</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════
+  LEADERBOARD SHOWCASE
+═══════════════════════════════════════════════════════ -->
+<section style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+  <div class="showcase reverse">
+    <div class="mock-wrap reveal">
+      <div class="mock-screen">
+        <div class="mock-titlebar">
+          <div class="dot dot-r"></div>
+          <div class="dot dot-y"></div>
+          <div class="dot dot-g"></div>
+          <span class="mock-title-text">GLOBAL LEADERBOARDS</span>
+        </div>
+        <div class="lb-mock-body">
+          <div class="lb-header-row">
+            <span class="lb-title">⚡ DISCIPLINE RANK</span>
+            <div class="lb-live"><span class="lb-live-dot"></span>LIVE · 247 TRADERS</div>
+          </div>
+          <div class="lb-row">
+            <span class="lb-pos" style="color:var(--gold)">1</span>
+            <span class="lb-rank-badge" style="color:#FF4C4C;text-shadow:0 0 12px rgba(255,76,76,0.7)">S</span>
+            <div class="lb-name">Void_Executor<div class="lb-sub">Swing Trader · S — TOP TIER</div></div>
+            <span class="lb-score" style="color:var(--accent)">98.4</span>
+            <span class="lb-pnl">+$14,220</span>
+          </div>
+          <div class="lb-row">
+            <span class="lb-pos" style="color:#C0C0C0">2</span>
+            <span class="lb-rank-badge" style="color:#FFD700;text-shadow:0 0 10px rgba(255,215,0,0.6)">A</span>
+            <div class="lb-name">K1ra_Trades<div class="lb-sub">Day Trader · A — MID TIER</div></div>
+            <span class="lb-score" style="color:var(--accent)">94.1</span>
+            <span class="lb-pnl">+$8,940</span>
+          </div>
+          <div class="lb-row">
+            <span class="lb-pos" style="color:#CD7F32">3</span>
+            <span class="lb-rank-badge" style="color:#00FF7F;text-shadow:0 0 8px rgba(0,255,127,0.6)">B</span>
+            <div class="lb-name">MarcoRx<div class="lb-sub">Scalper · B — TOP TIER</div></div>
+            <span class="lb-score" style="color:var(--accent)">89.7</span>
+            <span class="lb-pnl">+$5,120</span>
+          </div>
+          <div class="lb-row me">
+            <span class="lb-pos" style="color:var(--accent)">11</span>
+            <span class="lb-rank-badge" style="color:#00BFFF;text-shadow:0 0 8px rgba(0,191,255,0.6)">C</span>
+            <div class="lb-name">You<div class="lb-sub">Multi-Regime · C — LOW TIER</div></div>
+            <span class="lb-score" style="color:var(--accent)">72.3</span>
+            <span class="lb-pnl">+$2,841</span>
+          </div>
+          <div style="text-align:center;padding:12px 0;font-family:var(--font-h);font-size:9px;color:var(--muted);letter-spacing:2px;">
+            · · · 236 MORE TRADERS · · ·
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="showcase-text reveal reveal-delay-1">
+      <p class="section-label">Global Competition</p>
+      <h2 class="section-title">Rank Up By<br><span class="gold">Being Disciplined</span></h2>
+      <p class="section-desc">
+        TradeROW's leaderboard doesn't reward P&L alone. Your rank is earned through discipline — consistent plans, risk adherence, and emotional control.
+      </p>
+      <ul class="feature-list">
+        <li>21 rank tiers: G-LOW all the way to S-TOP</li>
+        <li>Rank points earned for discipline, not luck</li>
+        <li>Rank DOWN for violations — the leaderboard is honest</li>
+        <li>Live global board updated after every trade push</li>
+        <li>Cached via Redis for lightning-fast load times</li>
+        <li>Opt-in — your stats are private until you choose to compete</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════
+  RANK TIERS
+═══════════════════════════════════════════════════════ -->
+<section class="rank-section" id="ranks">
+  <p class="section-label">The Rank System</p>
+  <h2 class="section-title reveal">8 Tiers · 3 Divisions Each<br><span class="accent">21 Steps to S-Rank</span></h2>
+  <p class="section-desc reveal" style="margin:16px auto 0;text-align:center;">
+    Every tier is a statement. You don't buy your way in — you trade your way in.
+  </p>
+  <div class="rank-tiers">
+    <div class="rank-card reveal" style="border-color:#555E6A40;background:rgba(85,94,106,0.06);">
+      <span class="rank-letter" style="color:#555E6A">G</span>
+      <span class="rank-name">Iron</span>
+      <span class="rank-msg">The beginning. Everyone starts here.</span>
+    </div>
+    <div class="rank-card reveal reveal-delay-1" style="border-color:#7A6E5C40;background:rgba(122,110,92,0.06);">
+      <span class="rank-letter" style="color:#7A6E5C">F</span>
+      <span class="rank-name">Bronze</span>
+      <span class="rank-msg">First callus. The grind is real.</span>
+    </div>
+    <div class="rank-card reveal reveal-delay-2" style="border-color:#6A7A8A40;background:rgba(106,122,138,0.06);">
+      <span class="rank-letter" style="color:#6A7A8A">E</span>
+      <span class="rank-name">Steel</span>
+      <span class="rank-msg">You've survived the floor. Most don't.</span>
+    </div>
+    <div class="rank-card reveal reveal-delay-3" style="border-color:rgba(74,143,208,0.3);background:rgba(74,143,208,0.06);">
+      <span class="rank-letter" style="color:#4A8FD0;text-shadow:0 0 8px rgba(74,143,208,0.6)">D</span>
+      <span class="rank-name">Silver</span>
+      <span class="rank-msg">Out of the basement. Now the real work begins.</span>
+    </div>
+    <div class="rank-card reveal reveal-delay-1" style="border-color:rgba(0,191,255,0.3);background:rgba(0,191,255,0.06);">
+      <span class="rank-letter" style="color:#00BFFF;text-shadow:0 0 8px rgba(0,191,255,0.6)">C</span>
+      <span class="rank-name">Gold</span>
+      <span class="rank-msg">Competence acknowledged. Don't get comfortable.</span>
+    </div>
+    <div class="rank-card reveal reveal-delay-2" style="border-color:rgba(0,255,127,0.3);background:rgba(0,255,127,0.06);">
+      <span class="rank-letter" style="color:#00FF7F;text-shadow:0 0 8px rgba(0,255,127,0.6)">B</span>
+      <span class="rank-name">Platinum</span>
+      <span class="rank-msg">Elite minority. 90% never see this.</span>
+    </div>
+    <div class="rank-card reveal reveal-delay-3" style="border-color:rgba(255,215,0,0.3);background:rgba(255,215,0,0.06);">
+      <span class="rank-letter" style="color:#FFD700;text-shadow:0 0 10px rgba(255,215,0,0.6)">A</span>
+      <span class="rank-name">Diamond</span>
+      <span class="rank-msg">Precision-class operator. The market knows your name.</span>
+    </div>
+    <div class="rank-card reveal reveal-delay-1" style="border-color:rgba(255,76,76,0.4);background:rgba(255,76,76,0.06);">
+      <span class="rank-letter" style="color:#FF4C4C;text-shadow:0 0 12px rgba(255,76,76,0.7)">S</span>
+      <span class="rank-name">Sovereign</span>
+      <span class="rank-msg">One in ten thousand. You are the system.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════
+  TRADER TYPES
+═══════════════════════════════════════════════════════ -->
+<section class="trader-types-section">
+  <p class="section-label reveal">Trader Profiles</p>
+  <h2 class="section-title reveal">Built for <span class="accent">Every Style</span></h2>
+  <p class="section-desc reveal" style="margin:16px auto 0;text-align:center;">
+    Your profile shapes your risk rules, session defaults, and discipline guardrails.
+  </p>
+  <div class="trader-types-grid">
+    <div class="tt-card reveal">
+      <span class="tt-icon">⚡</span>
+      <span class="tt-name">Scalper</span>
+      <p class="tt-desc">Seconds to minutes. High frequency. Tight stops. The machine never stops.</p>
+    </div>
+    <div class="tt-card reveal reveal-delay-1">
+      <span class="tt-icon">📈</span>
+      <span class="tt-name">Day Trader</span>
+      <p class="tt-desc">Intraday only. Flat at close. Active management every session.</p>
+    </div>
+    <div class="tt-card reveal reveal-delay-2">
+      <span class="tt-icon">🌊</span>
+      <span class="tt-name">Swing Trader</span>
+      <p class="tt-desc">Multi-day positions. Rides momentum across sessions and news events.</p>
+    </div>
+    <div class="tt-card reveal reveal-delay-3">
+      <span class="tt-icon">🏔</span>
+      <span class="tt-name">Position Trader</span>
+      <p class="tt-desc">Weeks to months. Big-picture macro. Patient capital compounding.</p>
+    </div>
+    <div class="tt-card tt-special reveal reveal-delay-1">
+      <span class="tt-icon">🔀</span>
+      <span class="tt-name">Multi-Regime</span>
+      <p class="tt-desc">Adapts to what the market gives. Scalps today, swings tomorrow. No rigid box.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════
+  FULL FEATURE GRID
+═══════════════════════════════════════════════════════ -->
+<section class="feature-grid-section">
+  <div style="text-align:center;margin-bottom:0;">
+    <p class="section-label reveal" style="justify-content:center;">Everything Included</p>
+    <h2 class="section-title reveal">Every Feature. <span class="accent">Free.</span></h2>
+  </div>
+  <div class="feature-grid">
+    <div class="feature-card reveal">
+      <span class="fc-icon">📓</span>
+      <div class="fc-title">Trade Journal</div>
+      <p class="fc-desc">Log every entry and exit with price, size, SL, TP, session auto-detection, and screenshot upload.</p>
+      <span class="fc-tag">Core</span>
+    </div>
+    <div class="feature-card reveal reveal-delay-1">
+      <span class="fc-icon">🧮</span>
+      <div class="fc-title">Live RR Calculator</div>
+      <p class="fc-desc">Real-time risk/reward preview as you type. Weighted average for multiple exit points.</p>
+      <span class="fc-tag">Smart</span>
+    </div>
+    <div class="feature-card reveal reveal-delay-2">
+      <span class="fc-icon">🧬</span>
+      <div class="fc-title">Mindset Tagging</div>
+      <p class="fc-desc">Tag each trade with 20+ psychological states. See which emotions are costing you P&L.</p>
+      <span class="fc-tag">Psychology</span>
+    </div>
+    <div class="feature-card reveal reveal-delay-3">
+      <span class="fc-icon">🎯</span>
+      <div class="fc-title">Daily Quests</div>
+      <p class="fc-desc">Dynamic missions that adapt to your trading patterns. Complete them to earn XP and rank faster.</p>
+      <span class="fc-tag">Gamification</span>
+    </div>
+    <div class="feature-card reveal">
+      <span class="fc-icon">📅</span>
+      <div class="fc-title">Reports</div>
+      <p class="fc-desc">Weekly, monthly, and yearly breakdowns. Best/worst day, profitable months, annual return %.</p>
+      <span class="fc-tag">Reports</span>
+    </div>
+    <div class="feature-card reveal reveal-delay-1">
+      <span class="fc-icon">☁️</span>
+      <div class="fc-title">Cloud Sync</div>
+      <p class="fc-desc">Supabase-powered real-time sync across all your devices. Trades are never lost.</p>
+      <span class="fc-tag">Cloud</span>
+    </div>
+    <div class="feature-card reveal reveal-delay-2">
+      <span class="fc-icon">⏱</span>
+      <div class="fc-title">Multi-TP Support</div>
+      <p class="fc-desc">Log multiple take-profit exits with percentage allocation. Weighted average exit calculated automatically.</p>
+      <span class="fc-tag">Advanced</span>
+    </div>
+    <div class="feature-card reveal reveal-delay-3">
+      <span class="fc-icon">📤</span>
+      <div class="fc-title">CSV Import / Export</div>
+      <p class="fc-desc">Bring your existing trades in from any broker. Export everything anytime — your data, always yours.</p>
+      <span class="fc-tag">Portability</span>
+    </div>
+    <div class="feature-card reveal">
+      <span class="fc-icon">🌍</span>
+      <div class="fc-title">74 Timezones</div>
+      <p class="fc-desc">Full IANA timezone support from UTC-12 to UTC+14. Tilt resets at your midnight, not ours.</p>
+      <span class="fc-tag">Global</span>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════
+  INTEGRATIONS
+═══════════════════════════════════════════════════════ -->
+<section class="integrations-section">
+  <p class="section-label reveal" style="justify-content:center;">Powered By</p>
+  <h2 class="section-title reveal" style="text-align:center;">Enterprise-Grade Stack<br><span class="accent">Under the Hood</span></h2>
+  <div class="integrations-grid">
+    <div class="integ-chip reveal">
+      <span class="integ-dot" style="background:#3ECF8E"></span>
+      Supabase
+    </div>
+    <div class="integ-chip reveal reveal-delay-1">
+      <span class="integ-dot" style="background:#FF0000"></span>
+      Upstash Redis
+    </div>
+    <div class="integ-chip reveal reveal-delay-2">
+      <span class="integ-dot" style="background:#0090FF"></span>
+      Pinecone AI
+    </div>
+    <div class="integ-chip reveal reveal-delay-3">
+      <span class="integ-dot" style="background:#362D59"></span>
+      Sentry
+    </div>
+    <div class="integ-chip reveal reveal-delay-1">
+      <span class="integ-dot" style="background:#000000;border:1px solid #444"></span>
+      Vercel
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════
+  QUOTE
+═══════════════════════════════════════════════════════ -->
+<section class="quote-section">
+  <p class="quote-text reveal">
+    "The best traders in the world don't just have good strategies —
+    they have <span class="quote-accent">unbreakable systems</span> that
+    prevent them from their <span class="quote-accent">worst self</span>
+    from making decisions."
+  </p>
+  <p class="quote-author reveal reveal-delay-1">— The TradeROW Philosophy</p>
+</section>
+
+<!-- ════════════════════════════════════════════════════
+  FAQ
+═══════════════════════════════════════════════════════ -->
+<section class="faq-section" id="faq" style="border-top:1px solid var(--border);">
+  <div style="text-align:center;margin-bottom:60px;">
+    <p class="section-label reveal" style="justify-content:center;">FAQ</p>
+    <h2 class="section-title reveal">Common <span class="accent">Questions</span></h2>
+  </div>
+
+  <div class="faq-item" onclick="toggleFaq(this)">
+    <div class="faq-q">Is TradeROW really free?</div>
+    <div class="faq-a">Yes — completely free, forever. No subscription, no credit card, no free trial. Every feature including the leaderboard, AI smart search, analytics, and cloud sync is included at no cost.</div>
+  </div>
+  <div class="faq-item" onclick="toggleFaq(this)">
+    <div class="faq-q">What is the Tilt Meter and can I turn it off?</div>
+    <div class="faq-a">The Tilt Meter is a real-time emotional state tracker that monitors your trading behavior — revenge trades, risk violations, over-trading — and builds a tilt score. At 100% it locks your journal to force a cooldown. It resets every morning in your timezone. You can choose to ignore the warnings, but the lock enforces your own rules. That's the point.</div>
+  </div>
+  <div class="faq-item" onclick="toggleFaq(this)">
+    <div class="faq-q">How does the Discipline Lock quiz work?</div>
+    <div class="faq-a">When your journal locks from high tilt, clicking "Unlock Journal" presents a randomized 4-question multiple choice quiz drawn from a 7-question bank covering stop-losses, risk management, revenge trading, and your trading plan. All 4 must be answered correctly. Wrong answers re-shuffle the questions. This ensures you've genuinely reflected before re-entering the market.</div>
+  </div>
+  <div class="faq-item" onclick="toggleFaq(this)">
+    <div class="faq-q">How does the AI Smart Search work?</div>
+    <div class="faq-a">Every trade you log gets converted into a semantic vector by Pinecone AI and stored in a vector database. When you search, your query is also vectorized and matched against all your trades by meaning — not just keywords. This means searching "trades where I was emotional" actually finds those trades even if you wrote "got caught up in the move and entered too late."</div>
+  </div>
+  <div class="faq-item" onclick="toggleFaq(this)">
+    <div class="faq-q">How is rank earned?</div>
+    <div class="faq-a">Rank is earned through discipline score — not P&L. You gain rank points by following your plan, passing your risk guardrails, completing quests, and maintaining low tilt. You lose rank from violations, tilt locks, and breaking your own rules. There are 21 tiers total from G-LOW to S-TOP.</div>
+  </div>
+  <div class="faq-item" onclick="toggleFaq(this)">
+    <div class="faq-q">Is my trading data private?</div>
+    <div class="faq-a">Yes. Your trade data is stored in your own Supabase cloud instance and never shared with anyone. The leaderboard is opt-in only — your stats only appear publicly if you explicitly choose to join it. You can opt out at any time.</div>
+  </div>
+  <div class="faq-item" onclick="toggleFaq(this)">
+    <div class="faq-q">What markets does TradeROW support?</div>
+    <div class="faq-a">All of them. TradeROW automatically detects Forex, Crypto, Stocks, Futures, Options, Bonds, Commodities, and Indices from the pair name you enter. There's no manual category selection needed.</div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════
+  CTA
+═══════════════════════════════════════════════════════ -->
+<section class="cta-section">
+  <h2 class="reveal">
+    Ready to Stop <span style="color:var(--loss)">Losing</span><br>
+    to <span style="color:var(--accent)">Yourself?</span>
+  </h2>
+  <p class="reveal reveal-delay-1">Your edge is already there. TradeROW helps you stop getting in the way of it.</p>
+  <div class="hero-actions reveal reveal-delay-2">
+    <a href="index.html" class="btn-primary">⚡ Launch TradeROW Free</a>
+    <a href="#features" class="btn-ghost">See All Features</a>
+  </div>
+  <span class="free-badge reveal reveal-delay-3">✓ FREE FOREVER · NO CREDIT CARD · NO CATCH</span>
+</section>
+
+<!-- ════════════════════════════════════════════════════
+  FOOTER
+═══════════════════════════════════════════════════════ -->
+<footer>
+  <div class="footer-brand">
+    <a href="#" class="nav-logo">TRADE<span>ROW</span></a>
+    <p>The trading journal built for discipline. Track every trade, kill your tilt, and climb the ranks — free forever.</p>
+  </div>
+  <div class="footer-col">
+    <h4>Product</h4>
+    <ul>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#tilt">Tilt Meter</a></li>
+      <li><a href="#analytics">Analytics</a></li>
+      <li><a href="#ranks">Rank System</a></li>
+    </ul>
+  </div>
+  <div class="footer-col">
+    <h4>For Traders</h4>
+    <ul>
+      <li><a href="index.html">Launch App</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="#">Leaderboard</a></li>
+      <li><a href="#">Changelog</a></li>
+    </ul>
+  </div>
+  <div class="footer-col">
+    <h4>Powered By</h4>
+    <ul>
+      <li><a href="https://supabase.com" target="_blank">Supabase</a></li>
+      <li><a href="https://upstash.com" target="_blank">Upstash Redis</a></li>
+      <li><a href="https://pinecone.io" target="_blank">Pinecone AI</a></li>
+      <li><a href="https://vercel.com" target="_blank">Vercel</a></li>
+    </ul>
+  </div>
+</footer>
+<div class="footer-bottom">
+  <span>© 2026 TRADEROW — ALL RIGHTS RESERVED</span>
+  <span>BUILT FOR SERIOUS TRADERS</span>
+</div>
+
+<script>
+// ── Scroll reveal ─────────────────────────────────────────
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── FAQ toggle ────────────────────────────────────────────
+function toggleFaq(el) {
+  const isOpen = el.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+  if (!isOpen) el.classList.add('open');
+}
+
+// ── Animated stats counter ────────────────────────────────
+function animateCounter(el, target, suffix) {
+  let current = 0;
+  const step = target / 60;
+  const timer = setInterval(() => {
+    current += step;
+    if (current >= target) { current = target; clearInterval(timer); }
+    el.textContent = Math.floor(current) + (suffix || '');
+  }, 16);
+}
+
+const statNums = document.querySelectorAll('.stat-num');
+const statsBar = document.querySelector('.stat-bar');
+if (statsBar) {
+  const statObs = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      const targets = [21, 100, 6, 0];
+      const suffixes = ['', '+', '', ''];
+      statNums.forEach((el, i) => animateCounter(el, targets[i], suffixes[i]));
+      statObs.disconnect();
+    }
+  }, { threshold: 0.5 });
+  statObs.observe(statsBar);
+}
+
+// ── Tilt bar animation on view ────────────────────────────
+const tiltBar = document.querySelector('.tilt-bar-fill.tilt-75');
+if (tiltBar) {
+  tiltBar.style.width = '0%';
+  const tiltObs = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      setTimeout(() => { tiltBar.style.width = '75%'; }, 300);
+      tiltObs.disconnect();
+    }
+  }, { threshold: 0.5 });
+  tiltObs.observe(tiltBar);
+}
+
+// ── Bar chart animation ────────────────────────────────────
+const bars = document.querySelectorAll('.bar');
+bars.forEach(bar => {
+  const h = bar.style.height;
+  bar.style.height = '0%';
+  const barObs = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      setTimeout(() => { bar.style.height = h; }, 200 + Math.random() * 400);
+      barObs.disconnect();
+    }
+  }, { threshold: 0.3 });
+  barObs.observe(bar);
+});
+
+// ── Smooth nav scroll ─────────────────────────────────────
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  });
+});
+
+// ── Nav shadow on scroll ──────────────────────────────────
+window.addEventListener('scroll', () => {
+  document.querySelector('nav').style.boxShadow =
+    window.scrollY > 20 ? '0 4px 30px rgba(0,0,0,0.5)' : 'none';
+});
+</script>
+
+</body>
+</html>
