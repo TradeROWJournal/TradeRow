@@ -5673,14 +5673,42 @@ function collectMyLBStats() {
   };
 }
 
-// ── Push stats to Supabase leaderboard table ────────────────────
+// ── Push stats to Supabase leaderboard table (Redis rate-limited)
 async function lbPushStats() {
   if(!supabaseUser || !lbOptedIn) return;
+
+  // Check Redis rate limit (max 1 push per 2 minutes per user)
+  try {
+    const rl = await fetch('/api/redis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'rate-limit', userId: supabaseUser.id })
+    });
+    if(rl.ok) {
+      const { allowed, waitSeconds } = await rl.json();
+      if(!allowed) {
+        console.log(`[TradeROW] LB push rate-limited — wait ${waitSeconds}s`);
+        return; // silently skip, no toast needed
+      }
+    }
+  } catch(e) {
+    // Redis unavailable — proceed anyway (fail open)
+  }
+
   const stats = collectMyLBStats();
   const { error } = await supabaseClient
     .from('leaderboard')
     .upsert([{ user_id: supabaseUser.id, ...stats }], { onConflict: 'user_id' });
-  if(error) console.warn('LB push error:', error.message);
+  if(error) { console.warn('LB push error:', error.message); return; }
+
+  // Bust the Redis cache so the next leaderboard load reflects new stats
+  try {
+    await fetch('/api/redis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'invalidate' })
+    });
+  } catch(e) {}
 }
 
 // ── Opt in ──────────────────────────────────────────────────────
@@ -5710,14 +5738,13 @@ async function lbRefresh() {
   await lbFetchAndRender();
 }
 
-// ── Fetch from Supabase + render ────────────────────────────────
+// ── Fetch leaderboard — Redis cache → Supabase fallback ─────────
 async function lbFetchAndRender() {
   const dot = $('lb-dot'), statusTxt = $('lb-status-text');
   if(dot) { dot.style.background='var(--gold)'; dot.style.boxShadow='0 0 6px var(--gold)'; }
   if(statusTxt) statusTxt.textContent = 'SYNCING...';
 
   if(!supabaseUser) {
-    // Not logged in — show empty board
     lbData = [];
     renderLBRows();
     if(dot) dot.style.background='var(--muted)';
@@ -5725,21 +5752,36 @@ async function lbFetchAndRender() {
     return;
   }
 
-  const { data, error } = await supabaseClient
-    .from('leaderboard')
-    .select('*')
-    .eq('opted_in', true)
-    .order('discipline_score', { ascending: false })
-    .limit(100);
+  let data = null;
 
-  if(error) {
-    console.warn('LB fetch error:', error.message);
-    if(dot) { dot.style.background='var(--loss)'; dot.style.boxShadow='0 0 6px var(--loss)'; }
-    if(statusTxt) statusTxt.textContent = 'CONNECTION ERROR';
-    return;
+  // 1. Try Redis-backed cache endpoint (fast, reduces Supabase load)
+  try {
+    const r = await fetch('/api/redis?action=leaderboard');
+    if(r.ok) {
+      const json = await r.json();
+      if(json.data) data = json.data;
+    }
+  } catch(e) {
+    console.warn('[TradeROW] Redis endpoint unavailable, using Supabase direct');
   }
 
-  lbData = data || [];
+  // 2. Fallback: direct Supabase if /api/redis unreachable
+  if(!data) {
+    const { data: sbData, error } = await supabaseClient
+      .from('leaderboard').select('*')
+      .eq('opted_in', true)
+      .order('discipline_score', { ascending: false })
+      .limit(100);
+    if(error) {
+      console.warn('LB fetch error:', error.message);
+      if(dot) { dot.style.background='var(--loss)'; dot.style.boxShadow='0 0 6px var(--loss)'; }
+      if(statusTxt) statusTxt.textContent = 'CONNECTION ERROR';
+      return;
+    }
+    data = sbData || [];
+  }
+
+  lbData = data;
 
   // Check opt-in state
   lbOptedIn = !!localStorage.getItem('traderow_lb_optedin');
