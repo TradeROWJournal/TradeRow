@@ -1620,6 +1620,11 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
           <div class="class-card-name">Position Trader</div>
           <div class="class-card-desc">Weeks to months. Big-picture macro views. Patient capital.</div>
         </div>
+        <div class="class-card" data-class="Multi-Regime Trader" onclick="selectMainClass(this)">
+          <div class="class-card-icon">🔀</div>
+          <div class="class-card-name">Multi-Regime Trader</div>
+          <div class="class-card-desc">Adapts to the market — scalps, holds overnight, swings — whatever the conditions demand.</div>
+        </div>
       </div>
       <div class="ob-section-title" style="margin-top:18px;">Select Your Sub-Class</div>
       <div class="subclass-grid" id="sub-class-grid">
@@ -2489,7 +2494,7 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
             <div class="settings-title">Trader Classification</div>
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;" id="trader-type-breakdown"></div>
             <div style="margin-top:10px;font-family:var(--font-b);font-size:10px;color:var(--muted);line-height:1.8;border-top:1px solid var(--border);padding-top:9px;">
-              ⚡ <span style="color:var(--accent);">Scalper</span> &lt;15min · 📈 <span style="color:var(--accent);">Day</span> &lt;24h · 🌊 <span style="color:var(--accent);">Swing</span> &lt;14d · 🏔 <span style="color:var(--accent);">Position</span> 14d+
+              ⚡ <span style="color:var(--accent);">Scalper</span> &lt;15min · 📈 <span style="color:var(--accent);">Day</span> &lt;24h · 🌊 <span style="color:var(--accent);">Swing</span> &lt;14d · 🏔 <span style="color:var(--accent);">Position</span> 14d+ · 🔀 <span style="color:var(--accent);">Multi-Regime</span> Any
             </div>
           </div>
           <div class="settings-card">
@@ -4643,21 +4648,15 @@ function parsePasteImport() {
 
 // ─── TRADE CLASSIFICATION (FIX 5: NO HIDDEN TRADES) ────────────
 /**
- * Returns trade label + violation flag instead of filtering trades out.
- * Day Trader profiles see overnight trades with a warning, never hidden.
+ * Labels trades by duration. Markets are ever-changing — no trade is
+ * ever hidden or flagged as a violation regardless of profile.
  */
-function classifyTrade(trade, userProfile) {
+function classifyTrade(trade) {
   const entryMs = new Date(trade.entryTime || trade.date || 0).getTime();
   const exitMs  = new Date(trade.exitTime  || trade.date || 0).getTime();
   const durationDays = (exitMs - entryMs) / (1000 * 60 * 60 * 24);
-  const isOvernight = durationDays > 1;
-  const label = isOvernight ? 'Swing Trade' : 'Day Trade';
-  let isViolation = false, warningMsg = null;
-  if ((userProfile === 'day' || userProfile === 'scalper') && isOvernight) {
-    isViolation = true;
-    warningMsg = `⚠ Held ${Math.ceil(durationDays)} day(s) — exceeds ${userProfile} trader rules.`;
-  }
-  return { label, isViolation, warningMsg };
+  const label = durationDays > 1 ? 'Swing Trade' : 'Day Trade';
+  return { label, isViolation: false, warningMsg: null };
 }
 
 function detectSession(isoTime) {
@@ -4739,7 +4738,9 @@ function collectTags() {
 // ─── PARSE TRADER PROFILE FOR SCHEMA ───────────────────────────
 function getTraderProfile() {
   const prof = (() => {try{return JSON.parse(localStorage.getItem(LS.PROFILE))||{};}catch{return {};}})();
-  const sub = prof.subClass||'';
+  const main = prof.mainClass||'';
+  const sub  = prof.subClass||'';
+  if(main==='Multi-Regime Trader') return 'Multi-Regime';
   if(['Order Flow','CVD Div','Footprint','Volume Imbalance'].some(s=>sub.includes(s))) return 'Scalper';
   if(['Day','Intraday'].some(s=>sub.includes(s))) return 'Day';
   return 'Swing';
@@ -5120,12 +5121,9 @@ function renderTradeTable(){
   });
   if($('trade-count-label')) $('trade-count-label').textContent=`All Trades (${filtered.length})`;
   if(!filtered.length){tbody.innerHTML=`<tr><td colspan="11" style="text-align:center;color:var(--muted);font-family:var(--font-d);font-size:9px;padding:24px;letter-spacing:1px;">NO TRADES FOUND</td></tr>`;return;}
-  const _profile=getTraderProfile();
   tbody.innerHTML=filtered.map(t=>{
-    const {isViolation,warningMsg}=classifyTrade(t,_profile);
-    const trClass=isViolation?'profile-violation':'';
-    const trTitle=isViolation?`title="${warningMsg}"`:'';
-    return `<tr class="${trClass}" ${trTitle}>
+    const {label}=classifyTrade(t);
+    return `<tr data-trade-type="${label}">
     <td class="mono" style="font-size:9px;color:var(--muted);">
       <div style="color:var(--win);font-size:8px;">▲ ${fmtTradeDateTime(t.entryTime||t.date)}</div>
       <div style="color:var(--loss);font-size:8px;margin-top:2px;">▼ ${fmtTradeDateTime(t.exitTime)}</div>
