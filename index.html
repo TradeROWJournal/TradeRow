@@ -4532,22 +4532,20 @@ function calcPreview(){
   if(et&&xt){ const diff=(new Date(xt)-new Date(et))/60000; if(diff>0)holdMins=diff; }
 
   // R:R — use actual exit price (or weighted avg of TPs) vs SL
-  // Fallback: if SL not set but risk% is configured, derive risk distance from it
+  // If no SL: use 1% of entry price as 1R baseline (price-move based)
   let rrr=0, riskDollar=0;
-  const capital2=parseFloat(localStorage.getItem(LS.CAPITAL)||0);
-  const riskProfile2=getRiskProfile();
-  let derivedSL=sl;
-  if(!derivedSL && capital2 && riskProfile2.riskPT && size && entry) {
-    // Estimate risk per unit from the risk % setting
-    const riskDollarEst=(capital2*riskProfile2.riskPT/100);
-    const riskPerUnit=riskDollarEst/size;
-    derivedSL=dir==='Long'?entry-riskPerUnit:entry+riskPerUnit;
-  }
-  if(derivedSL && entry && effectiveExit) {
-    const riskR   = Math.abs(entry - derivedSL);
+  if(entry && effectiveExit) {
+    let riskPerUnit;
+    if(sl) {
+      // SL provided — real R:R
+      riskPerUnit = Math.abs(entry - sl);
+    } else {
+      // No SL — use 1% of entry as 1R (shows realized move as R-multiple)
+      riskPerUnit = entry * 0.01;
+    }
     const rewardR = Math.abs(effectiveExit - entry);
-    if(riskR > 0) { rrr = Math.round((rewardR / riskR) * 100) / 100; }
-    riskDollar = riskR * size;
+    if(riskPerUnit > 0) { rrr = Math.round((rewardR / riskPerUnit) * 100) / 100; }
+    riskDollar = riskPerUnit * size;
   }
   const capital=parseFloat(localStorage.getItem(LS.CAPITAL)||0);
   const riskPct=capital&&riskDollar?parseFloat(((riskDollar/capital)*100).toFixed(2)):0;
@@ -4914,20 +4912,15 @@ function saveTrade(){
   const balBefore = capital + netPnlExcludingThis;
   const balAfter  = balBefore + netPnl;
 
-  // R:R calculation — uses effectiveExit (weighted avg of TPs, or plain exit price) vs SL
-  // If no SL entered, falls back to deriving risk from the user's configured risk % setting
+  // R:R calculation — uses effectiveExit (weighted avg of TPs, or plain exit price)
+  // With SL: real R:R = price move / risk to stop
+  // Without SL: price-move R-multiple using 1% of entry as 1R baseline
   const slVal = parseFloat($('f-sl')?.value) || 0;
   let rrr = 0;
-  let riskSL = slVal;
-  if(!riskSL && capital && riskProfile.riskPT && size && entry) {
-    const riskDollarEst = capital * riskProfile.riskPT / 100;
-    const riskPerUnit   = riskDollarEst / size;
-    riskSL = dir === 'Long' ? entry - riskPerUnit : entry + riskPerUnit;
-  }
-  if(riskSL && entry && effectiveExit) {
-    const risk   = Math.abs(entry - riskSL);
-    const reward = Math.abs(effectiveExit - entry);
-    if(risk > 0) rrr = Math.round((reward / risk) * 100) / 100;
+  if(entry && effectiveExit) {
+    const riskPerUnit = slVal ? Math.abs(entry - slVal) : entry * 0.01;
+    const reward      = Math.abs(effectiveExit - entry);
+    if(riskPerUnit > 0) rrr = Math.round((reward / riskPerUnit) * 100) / 100;
   }
 
   // Risk % calculation
@@ -5268,7 +5261,16 @@ function renderTradeTable(){
     <td class="mono">${t.entryPrice?.toFixed(4)||'—'}</td>
     <td class="mono">${t.exitPrice?.toFixed(4)||'—'}</td>
     <td class="mono">${t.posSize||'—'}</td>
-    <td class="mono" style="color:${(t.rrr||t.rr||0)>=2?'var(--win)':(t.rrr||t.rr||0)>=1?'var(--gold)':'var(--muted)'}">${(t.rrr||t.rr||0)>0?(t.rrr||t.rr).toFixed(2):'—'}</td>
+    <td class="mono" style="color:${(t.rrr||t.rr||0)>=2?'var(--win)':(t.rrr||t.rr||0)>=1?'var(--gold)':'var(--muted)'}">
+    ${(()=>{
+      let r=t.rrr||t.rr||0;
+      if(!r && t.entryPrice && t.exitPrice){
+        const risk=t.stop_loss?Math.abs(t.entryPrice-t.stop_loss):t.entryPrice*0.01;
+        if(risk>0) r=Math.round((Math.abs(t.exitPrice-t.entryPrice)/risk)*100)/100;
+      }
+      return r>0?r.toFixed(2):'—';
+    })()}
+    </td>
     <td><span class="badge badge-${t.result.toLowerCase()}">${t.result}</span></td>
     <td class="${(t.pnl||t.netPnl||0)>0?'pnl-pos':(t.pnl||t.netPnl||0)<0?'pnl-neg':'pnl-zero'}">${fmtMoney(t.pnl||t.netPnl||0)}</td>
     <td class="mono" style="color:var(--muted);">${fmtMoney(t.balanceAfter||0)}</td>
@@ -6629,7 +6631,7 @@ function renderMobileTradeCards(filteredTrades){
       </div>
       <div class="tc-grid">
         <div class="tc-item"><div class="tc-label">Net P&L</div><div class="tc-val ${pnlClass}">${fmt(t.netPnl)}</div></div>
-        <div class="tc-item"><div class="tc-label">R:R</div><div class="tc-val" style="color:${(t.rrr||t.rr||0)>=2?'var(--win)':(t.rrr||t.rr||0)>=1?'var(--gold)':'var(--muted)'}">${(t.rrr||t.rr||0)>0?(t.rrr||t.rr).toFixed(2):'—'}</div></div>
+        <div class="tc-item"><div class="tc-label">R:R</div><div class="tc-val" style="color:${(()=>{let r=t.rrr||t.rr||0;if(!r&&t.entryPrice&&t.exitPrice){const risk=t.stop_loss?Math.abs(t.entryPrice-t.stop_loss):t.entryPrice*0.01;if(risk>0)r=Math.round((Math.abs(t.exitPrice-t.entryPrice)/risk)*100)/100;}return r>=2?'var(--win)':r>=1?'var(--gold)':'var(--muted)'})()}">${(()=>{let r=t.rrr||t.rr||0;if(!r&&t.entryPrice&&t.exitPrice){const risk=t.stop_loss?Math.abs(t.entryPrice-t.stop_loss):t.entryPrice*0.01;if(risk>0)r=Math.round((Math.abs(t.exitPrice-t.entryPrice)/risk)*100)/100;}return r>0?r.toFixed(2):'—'})()}</div></div>
         <div class="tc-item"><div class="tc-label">Session</div><div class="tc-val">${t.session||'—'}</div></div>
         <div class="tc-item"><div class="tc-label">Entry</div><div class="tc-val" style="font-size:10px;">${t.entryPrice||'—'}</div></div>
         <div class="tc-item"><div class="tc-label">Exit</div><div class="tc-val" style="font-size:10px;">${t.exitPrice||'—'}</div></div>
