@@ -6871,41 +6871,72 @@ async function syncTradesFromCloud() {
     return;
   }
   if (!data || data.length === 0) return;
-  const existingCloudIds = new Set(trades.filter(t => t.cloud_id).map(t => t.cloud_id));
-  let added = 0;
+
+  // Build a map of all existing local trades by their id and cloud_id
+  const localById     = new Map(trades.map(t => [t.id, t]));
+  const localByCloud  = new Map(trades.filter(t => t.cloud_id).map(t => [t.cloud_id, t]));
+
+  let added = 0, restored = 0;
+
   data.forEach(ct => {
-    if (existingCloudIds.has(ct.id)) return;
-    trades.unshift({
-      id: ct.local_id || (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random()),
-      cloud_id: ct.id,
-      timestamp: ct.created_at,
-      pair: ct.symbol || ct.pair || 'UNKNOWN',
-      direction: ct.trade_type === 'long' ? 'long' : 'short',
-      market_type: ct.asset_category || detectMarketType(ct.symbol || ct.pair || ''),
-      entry: ct.entry_price || 0,
-      pnl: ct.pnl || 0,
-      netPnl: ct.pnl || 0,
-      grossPnl: ct.pnl || 0,
-      result: ct.pnl > 0 ? 'Win' : ct.pnl < 0 ? 'Loss' : 'BE',
-      notes: ct.notes || '',
-      tags: { psych: ct.emotion_tag ? [ct.emotion_tag] : [] },
-      behaviors: ct.emotion_tag ? [ct.emotion_tag] : [],
-      date: ct.created_at,
+    // Skip if already in local by cloud_id
+    if (localByCloud.has(ct.id)) return;
+
+    // ── Restore full trade from raw_data if available ──────────
+    if (ct.raw_data) {
+      try {
+        const full = JSON.parse(ct.raw_data);
+        full.cloud_id = ct.id; // always stamp with current cloud id
+        // Only add if not already present by local id
+        if (!localById.has(full.id)) {
+          trades.unshift(full);
+          localById.set(full.id, full);
+          restored++;
+        }
+        return;
+      } catch(e) {
+        // raw_data parse failed — fall through to partial restore below
+      }
+    }
+
+    // ── Partial restore (legacy rows without raw_data) ─────────
+    const partial = {
+      id:           ct.local_id || (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random()),
+      cloud_id:     ct.id,
+      timestamp:    ct.created_at,
+      date:         ct.created_at,
+      pair:         ct.symbol || ct.pair || 'UNKNOWN',
+      direction:    ct.trade_type === 'long' ? 'long' : 'short',
+      market_type:  ct.asset_category || detectMarketType(ct.symbol || ct.pair || ''),
+      entry:        ct.entry_price || 0,
+      entryPrice:   ct.entry_price || 0,
+      exitPrice:    ct.exit_price  || 0,
+      pnl:          ct.pnl || 0,
+      netPnl:       ct.pnl || 0,
+      grossPnl:     ct.pnl || 0,
+      result:       ct.pnl > 0 ? 'Win' : ct.pnl < 0 ? 'Loss' : 'BE',
+      notes:        ct.notes || '',
+      tags:         { psych: ct.emotion_tag ? [ct.emotion_tag] : [] },
+      behaviors:    ct.emotion_tag ? [ct.emotion_tag] : [],
       riskAdherent: true,
       position_size: ct.position_size || 0,
-      posSize: ct.position_size || 0,
-      strategy: ct.strategy || '',
-      exitPrice: ct.exit_price || 0,
-      entryPrice: ct.entry_price || 0,
+      posSize:       ct.position_size || 0,
+      strategy:      ct.strategy || '',
       balanceAfter: 0, riskPct: 0, rrr: 0, totalFees: 0,
       entryValue: 0, exitValue: 0, holdMinutes: null,
-    });
-    added++;
+    };
+    if (!localById.has(partial.id)) {
+      trades.unshift(partial);
+      localById.set(partial.id, partial);
+      added++;
+    }
   });
-  if (added > 0) {
+
+  const total = added + restored;
+  if (total > 0) {
     save();
     renderAll();
-    showToast(`☁️ Synced ${added} trade${added > 1 ? 's' : ''} from cloud`);
+    showToast(`☁️ Restored ${total} trade${total > 1 ? 's' : ''} from cloud`);
   }
 }
 
@@ -6926,7 +6957,8 @@ async function syncTradeToSupabase(trade) {
       strategy:         trade.strategy || (trade.tags?.setup?.[0] || ''),
       notes:            trade.notes || '',
       emotion_tag:      (trade.behaviors || trade.tags?.psych || [])[0] || null,
-      discipline_score: trade.riskAdherent ? 10 : 5
+      discipline_score: trade.riskAdherent ? 10 : 5,
+      raw_data:         JSON.stringify(trade)   // ← full trade object preserved
     }], { onConflict: 'local_id' });
   if (error) { console.warn('Cloud save error (saved locally):', error.message); }
   else if (data && data[0]) {
