@@ -2374,8 +2374,20 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
         <input type="text" placeholder="🔍 Search pair, notes..." id="search-filter" oninput="renderTradeTable()">
         <select id="dir-filter" onchange="renderTradeTable()"><option value="">All Directions</option><option>Long</option><option>Short</option></select>
         <select id="result-filter" onchange="renderTradeTable()"><option value="">All Results</option><option>Win</option><option>Loss</option><option>BE</option></select>
+        <button class="btn btn-ghost" id="smart-search-btn" onclick="toggleSmartSearch()" title="AI Semantic Search — find trades by meaning, not just keywords">🧠 Smart Search</button>
         <button class="btn btn-ghost" onclick="exportCSV()">⬇ Export</button>
         <button class="btn btn-ghost" onclick="triggerImportCSV()">⬆ Import</button>
+      </div>
+      <!-- Smart Search Panel -->
+      <div id="smart-search-panel" style="display:none;background:#0a1520;border:1px solid rgba(0,191,255,0.2);border-radius:8px;padding:14px 16px;margin-bottom:12px;">
+        <div style="font-family:Orbitron,monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:8px;">🧠 AI SMART SEARCH</div>
+        <div style="font-family:var(--font-b);font-size:11px;color:var(--muted);margin-bottom:10px;">Describe what you're looking for in plain language — finds trades by meaning, not just keywords.</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="smart-search-input" placeholder='e.g. "FOMO trades after a loss" or "missed my target early"' style="flex:1;background:#0d1f2d;border:1px solid rgba(0,191,255,0.2);color:var(--text);border-radius:4px;padding:8px 12px;font-family:var(--font-b);font-size:12px;" onkeydown="if(event.key==='Enter')runSmartSearch()">
+          <button class="btn btn-primary" onclick="runSmartSearch()" style="white-space:nowrap;">Search</button>
+          <button class="btn btn-ghost" onclick="clearSmartSearch()" style="white-space:nowrap;">✕ Clear</button>
+        </div>
+        <div id="smart-search-status" style="font-family:var(--font-b);font-size:10px;color:var(--muted);margin-top:6px;min-height:14px;"></div>
       </div>
       <div class="table-card">
         <div class="table-header"><span id="trade-count-label">All Trades (0)</span></div>
@@ -4878,6 +4890,8 @@ function saveTrade(){
   save(); checkAutoQuests(); checkTiltConditions(); renderAll();
   // Sync to cloud (both new and edited trades)
   if (typeof syncTradeToSupabase === 'function') syncTradeToSupabase(trade);
+  // Index trade in Pinecone for semantic search (fire-and-forget)
+  pineconeUpsert(trade);
   // Auto-push leaderboard stats after each trade save
   setTimeout(() => { if(typeof lbPushStats === "function") lbPushStats(); }, 1500);
   closeModal();
@@ -4888,6 +4902,7 @@ function saveTrade(){
 function deleteTrade(id){
   if(!confirm('Delete this trade?'))return;
   if(typeof deleteCloudTrade === 'function') deleteCloudTrade(id);
+  pineconeDelete(id);
   trades=trades.filter(t=>t.id!==id);
   save(); renderAll(); showToast('Trade deleted');
 }
@@ -5111,14 +5126,24 @@ function renderTradeTable(){
     if(dir&&t.direction!==dir)return false;
     if(res&&t.result!==res)return false;
     if(search&&!(t.pair.toLowerCase().includes(search)||(t.notes||'').toLowerCase().includes(search)||(t.behaviors||[]).join(' ').toLowerCase().includes(search)))return false;
+    // Smart search: only show trades returned by Pinecone semantic search
+    if(smartSearchResults !== null && !smartSearchResults.includes(t.id)) return false;
     return true;
   });
-  filtered.sort((a,b)=>{
-    let av=a[sortKey]||0, bv=b[sortKey]||0;
-    if(sortKey==='date'||sortKey==='entryTime'){av=new Date(a.date||a.entryTime||0);bv=new Date(b.date||b.entryTime||0);}
-    if(typeof av==='string')av=av.toLowerCase(),bv=(bv+'').toLowerCase();
-    return av<bv?-sortDir:av>bv?sortDir:0;
-  });
+  // If smart search active, sort by Pinecone relevance order (most similar first)
+  if(smartSearchResults !== null && smartSearchResults.length) {
+    filtered.sort((a,b)=>{
+      const ia=smartSearchResults.indexOf(a.id), ib=smartSearchResults.indexOf(b.id);
+      return (ia===-1?999:ia)-(ib===-1?999:ib);
+    });
+  } else {
+    filtered.sort((a,b)=>{
+      let av=a[sortKey]||0, bv=b[sortKey]||0;
+      if(sortKey==='date'||sortKey==='entryTime'){av=new Date(a.date||a.entryTime||0);bv=new Date(b.date||b.entryTime||0);}
+      if(typeof av==='string')av=av.toLowerCase(),bv=(bv+'').toLowerCase();
+      return av<bv?-sortDir:av>bv?sortDir:0;
+    });
+  }
   if($('trade-count-label')) $('trade-count-label').textContent=`All Trades (${filtered.length})`;
   if(!filtered.length){tbody.innerHTML=`<tr><td colspan="11" style="text-align:center;color:var(--muted);font-family:var(--font-d);font-size:9px;padding:24px;letter-spacing:1px;">NO TRADES FOUND</td></tr>`;return;}
   tbody.innerHTML=filtered.map(t=>{
@@ -7089,8 +7114,104 @@ function validateDisciplineQuiz() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// INIT TIMEZONE SELECT on settings page render
+// PINECONE — SEMANTIC TRADE SEARCH
 // ─────────────────────────────────────────────────────────────
+
+let smartSearchActive = false;     // true when showing semantic results
+let smartSearchResults = null;     // array of matched trade IDs from Pinecone
+
+// ── Toggle smart search panel ─────────────────────────────────
+function toggleSmartSearch() {
+  const panel = document.getElementById('smart-search-panel');
+  const btn   = document.getElementById('smart-search-btn');
+  if (!panel) return;
+  smartSearchActive = panel.style.display === 'none';
+  panel.style.display = smartSearchActive ? 'block' : 'none';
+  if (btn) btn.style.background = smartSearchActive ? 'rgba(0,191,255,0.15)' : '';
+  if (!smartSearchActive) clearSmartSearch();
+}
+
+// ── Run semantic search via Pinecone ──────────────────────────
+async function runSmartSearch() {
+  const input  = document.getElementById('smart-search-input');
+  const status = document.getElementById('smart-search-status');
+  const query  = input?.value?.trim();
+  if (!query) return;
+
+  if (status) status.textContent = '🔍 Searching your trade history...';
+
+  try {
+    const r = await fetch('/api/pinecone', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'search', query, topK: 10 }),
+    });
+
+    if (!r.ok) throw new Error(`Search failed (${r.status})`);
+    const { matches, error } = await r.json();
+
+    if (error) throw new Error(error);
+
+    if (!matches || matches.length === 0) {
+      if (status) status.textContent = '⚠ No matching trades found. Try a different description.';
+      smartSearchResults = [];
+      renderTradeTable();
+      return;
+    }
+
+    // Store matched IDs ordered by relevance score
+    smartSearchResults = matches.map(m => m.id);
+    if (status) status.textContent = `✓ Found ${matches.length} semantically similar trade${matches.length !== 1 ? 's' : ''}`;
+    renderTradeTable();
+
+  } catch (err) {
+    console.warn('[Pinecone search]', err.message);
+    if (status) status.textContent = `⚠ ${err.message.includes('env') ? 'Pinecone not configured yet.' : err.message}`;
+  }
+}
+
+// ── Clear smart search, restore normal table ──────────────────
+function clearSmartSearch() {
+  smartSearchResults = null;
+  const input  = document.getElementById('smart-search-input');
+  const status = document.getElementById('smart-search-status');
+  if (input)  input.value = '';
+  if (status) status.textContent = '';
+  renderTradeTable();
+}
+
+// ── Index a trade in Pinecone (fire-and-forget) ───────────────
+async function pineconeUpsert(trade) {
+  // Only index trades that have something meaningful to search
+  const hasContent = trade.notes?.trim() || (trade.behaviors || []).length || trade.pair;
+  if (!hasContent) return;
+
+  try {
+    await fetch('/api/pinecone', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'upsert', trade }),
+    });
+  } catch (e) {
+    // Silently fail — Pinecone indexing is enhancement, not critical path
+    console.warn('[Pinecone upsert]', e.message);
+  }
+}
+
+// ── Remove a trade vector when trade is deleted ───────────────
+async function pineconeDelete(tradeId) {
+  try {
+    await fetch('/api/pinecone', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', tradeId }),
+    });
+  } catch (e) {
+    console.warn('[Pinecone delete]', e.message);
+  }
+}
+
+
 (function initTimezoneSelect() {
   // Defer until DOM is ready
   document.addEventListener('DOMContentLoaded', () => {
