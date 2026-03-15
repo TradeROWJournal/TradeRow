@@ -27,6 +27,68 @@
 <meta name="theme-color" content="#00BFFF">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<!-- ── Sentry error reporting (must be first JS to run) ── -->
+<script>
+(function() {
+  // ── Send an event to our /api/sentry proxy ──────────────
+  function sentryCapture(opts) {
+    try {
+      const user = (() => {
+        try { return window.supabaseUser || null; } catch { return null; }
+      })();
+      fetch('/api/sentry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type:      opts.type      || 'message',
+          level:     opts.level     || 'error',
+          message:   opts.message   || 'Unknown error',
+          stack:     opts.stack     || null,
+          context:   opts.context   || {},
+          userId:    user?.id       || null,
+          userEmail: user?.email    || null,
+        }),
+      }).catch(function() {}); // silently ignore if offline
+    } catch(e) {}
+  }
+
+  // ── Global JS error handler ──────────────────────────────
+  window.onerror = function(message, source, lineno, colno, error) {
+    sentryCapture({
+      type:    'exception',
+      message: message,
+      stack:   error ? error.stack : (source + ':' + lineno + ':' + colno),
+      context: {
+        source:   'window.onerror',
+        page:     (typeof currentPage !== 'undefined') ? currentPage : 'unknown',
+        lineno:   lineno,
+        colno:    colno,
+        filename: source,
+      },
+    });
+    return false; // let browser also log it
+  };
+
+  // ── Unhandled promise rejections ─────────────────────────
+  window.addEventListener('unhandledrejection', function(e) {
+    const reason = e.reason;
+    sentryCapture({
+      type:    'exception',
+      level:   'error',
+      message: reason?.message || String(reason) || 'Unhandled promise rejection',
+      stack:   reason?.stack   || null,
+      context: {
+        source: 'unhandledrejection',
+        page:   (typeof currentPage !== 'undefined') ? currentPage : 'unknown',
+      },
+    });
+  });
+
+  // ── Expose globally so other code can use it ─────────────
+  window.sentryCapture = sentryCapture;
+})();
+</script>
 <style>
 :root {
   --bg: #0A0F14;
@@ -5724,7 +5786,11 @@ async function lbPushStats() {
   const { error } = await supabaseClient
     .from('leaderboard')
     .upsert([{ user_id: supabaseUser.id, ...stats }], { onConflict: 'user_id' });
-  if(error) { console.warn('LB push error:', error.message); return; }
+  if(error) {
+    console.warn('LB push error:', error.message);
+    if(window.sentryCapture) window.sentryCapture({ type:'exception', level:'warning', message:'lbPushStats: '+error.message, context:{ source:'supabase-leaderboard' } });
+    return;
+  }
 
   // Bust the Redis cache so the next leaderboard load reflects new stats
   try {
@@ -5799,6 +5865,7 @@ async function lbFetchAndRender() {
       .limit(100);
     if(error) {
       console.warn('LB fetch error:', error.message);
+      if(window.sentryCapture) window.sentryCapture({ type:'exception', level:'warning', message:'lbFetchAndRender: '+error.message, context:{ source:'supabase-leaderboard' } });
       if(dot) { dot.style.background='var(--loss)'; dot.style.boxShadow='0 0 6px var(--loss)'; }
       if(statusTxt) statusTxt.textContent = 'CONNECTION ERROR';
       return;
@@ -6764,7 +6831,11 @@ async function syncTradesFromCloud() {
     .select('*')
     .eq('user_id', supabaseUser.id)
     .order('created_at', { ascending: false });
-  if (error) { console.error('syncTradesFromCloud error:', error); return; }
+  if (error) {
+    console.error('syncTradesFromCloud error:', error);
+    if(window.sentryCapture) window.sentryCapture({ type:'exception', message:'syncTradesFromCloud: '+error.message, context:{ source:'supabase', page: currentPage } });
+    return;
+  }
   if (!data || data.length === 0) return;
   const existingCloudIds = new Set(trades.filter(t => t.cloud_id).map(t => t.cloud_id));
   let added = 0;
@@ -7195,6 +7266,7 @@ async function pineconeUpsert(trade) {
   } catch (e) {
     // Silently fail — Pinecone indexing is enhancement, not critical path
     console.warn('[Pinecone upsert]', e.message);
+    if(window.sentryCapture) window.sentryCapture({ type:'exception', level:'warning', message:'pineconeUpsert: '+e.message, context:{ source:'pinecone', tradeId: trade?.id } });
   }
 }
 
