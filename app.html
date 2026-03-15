@@ -3770,7 +3770,7 @@ function getQuestProgress(q) {
   }
   if(key==='rrrTarget') {
     const weekT=trades.filter(t=>{ const d=new Date(t.date||t.entryTime||''); return getWeekNum(d)===wk && d.getFullYear()===y; });
-    const avgRRR = weekT.length ? weekT.reduce((s,t)=>s+(parseFloat(t.rrr)||0),0)/weekT.length : 0;
+    const avgRRR = weekT.length ? (()=>{ const rv=weekT.map(t=>getTradeRR(t)).filter(r=>r>0); return rv.length?rv.reduce((s,r)=>s+r,0)/rv.length:0; })() : 0;
     const met = avgRRR >= (q.rrrMin||1.5) ? 1 : 0;
     return {cur:met,max:1};
   }
@@ -5059,12 +5059,26 @@ function deleteTrade(id){
 function sortTable(key){ if(sortKey===key){sortDir*=-1;}else{sortKey=key;sortDir=-1;} renderTradeTable(); }
 
 // ─── STATS CALCULATION ───────────────────────────────────────────
+function getTradeRR(t) {
+  // Use stored value if valid
+  if(t.rrr && t.rrr > 0) return t.rrr;
+  if(t.rr  && t.rr  > 0) return t.rr;
+  // Recalculate from entry/exit when not stored
+  const entry = t.entryPrice || t.entry || 0;
+  const exit  = t.exitPrice  || t.effectiveExit || 0;
+  if(!entry || !exit) return 0;
+  const risk   = t.stop_loss ? Math.abs(entry - t.stop_loss) : entry * 0.01;
+  const reward = Math.abs(exit - entry);
+  return risk > 0 ? Math.round((reward / risk) * 100) / 100 : 0;
+}
+
 function calcStats(arr) {
   const total=arr.length, wins=arr.filter(t=>t.result==='Win'), losses=arr.filter(t=>t.result==='Loss'), bes=arr.filter(t=>t.result==='BE');
   const netPnl=arr.reduce((s,t)=>s+t.netPnl,0);
   const grossW=wins.reduce((s,t)=>s+t.netPnl,0), grossL=Math.abs(losses.reduce((s,t)=>s+t.netPnl,0));
   const pf=grossL?grossW/grossL:(grossW>0?99:1);
-  const avgRRR=arr.length?avg(arr.map(t=>t.rrr||0)):0;
+  const rVals=arr.map(t=>getTradeRR(t)).filter(r=>r>0);
+  const avgRRR=rVals.length?avg(rVals):0;
   const totalFees=arr.reduce((s,t)=>s+(t.totalFees||0),0);
   const winRate=total?wins.length/total:0;
   const expected=total?netPnl/total:0;
@@ -5429,7 +5443,7 @@ function renderCalendar() {
       const dayPnl  = dayTrades.reduce((s,t)=>s+(t.netPnl||t.pnl||0),0);
       const dayWins = dayTrades.filter(t=>t.result==='Win').length;
       const dayWR   = Math.round(dayWins/dayTrades.length*100);
-      const rVals   = dayTrades.map(t=>t.rrr||t.rr||0).filter(r=>r>0);
+      const rVals   = dayTrades.map(t=>getTradeRR(t)).filter(r=>r>0);
       const dayRR   = rVals.length ? (rVals.reduce((s,r)=>s+r,0)/rVals.length).toFixed(2) : null;
 
       weekPnl  += dayPnl;
@@ -5526,7 +5540,7 @@ function renderAnalyticsCharts(){
 
   // R:R dist
   const rrrBins={'0-0.5':0,'0.5-1':0,'1-1.5':0,'1.5-2':0,'2-3':0,'3+':0};
-  trades.forEach(t=>{ const r=t.rrr||0; if(r<0.5)rrrBins['0-0.5']++; else if(r<1)rrrBins['0.5-1']++; else if(r<1.5)rrrBins['1-1.5']++; else if(r<2)rrrBins['1.5-2']++; else if(r<3)rrrBins['2-3']++; else rrrBins['3+']++; });
+  trades.forEach(t=>{ const r=getTradeRR(t); if(r<0.5)rrrBins['0-0.5']++; else if(r<1)rrrBins['0.5-1']++; else if(r<1.5)rrrBins['1-1.5']++; else if(r<2)rrrBins['1.5-2']++; else if(r<3)rrrBins['2-3']++; else rrrBins['3+']++; });
   const rrrVals=Object.values(rrrBins);
   mkChart('rrrChart','bar',{
     labels:Object.keys(rrrBins),
@@ -5721,7 +5735,7 @@ function renderYearlyReport(){
     const be=mTrades.filter(t=>t.result==='BE').length;
     const netPnl=mTrades.reduce((s,t)=>s+(parseFloat(t.netPnl)||0),0);
     const wr=mTrades.length?Math.round(wins/mTrades.length*100):0;
-    const avgRrr=mTrades.length?mTrades.reduce((s,t)=>s+(parseFloat(t.rrr)||0),0)/mTrades.length:0;
+    const avgRrr=mTrades.length?(()=>{ const rv=mTrades.map(t=>getTradeRR(t)).filter(r=>r>0); return rv.length?rv.reduce((s,r)=>s+r,0)/rv.length:0; })():0;
     // best/worst day
     const dayMap={};
     mTrades.forEach(t=>{const d=new Date(t.date||t.entryTime||'');if(!isNaN(d)){const dk=d.toDateString();dayMap[dk]=(dayMap[dk]||0)+(parseFloat(t.netPnl)||0);}});
@@ -5878,7 +5892,7 @@ function renderReport(){
       <td class="mono">${t.posSize||'—'}</td>
       <td class="${t.netPnl>0?'pnl-pos':t.netPnl<0?'pnl-neg':'pnl-zero'}">${fmtMoney(t.netPnl)}</td>
       <td><span class="badge badge-${t.result.toLowerCase()}">${t.result}</span></td>
-      <td class="mono" style="color:${t.rrr>=2?'var(--win)':t.rrr>=1?'var(--gold)':'var(--loss)'};">${(t.rrr||0).toFixed(2)}</td>
+      <td class="mono" style="color:${t.rrr>=2?'var(--win)':t.rrr>=1?'var(--gold)':'var(--loss)'};">${getTradeRR(t)>0?getTradeRR(t).toFixed(2):"—"}</td>
       <td style="font-size:9px;color:var(--accent);">${(t.behaviors||[]).slice(0,2).join(', ')||'—'}</td>
       <td>${t.screenshot?`<button onclick="openLightbox('${t.id}')" class="btn btn-ghost" style="font-size:9px;padding:2px 6px;">📸</button>`:'—'}</td>
     </tr>`).join('');
