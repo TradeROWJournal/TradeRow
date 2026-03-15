@@ -1217,6 +1217,60 @@ footer {
   .stat-bar { flex-direction: column; }
   .stat-item { border-right: none; border-bottom: 1px solid var(--border); }
 }
+
+/* ─── CALENDAR MOCK ───────────────────────────────── */
+.cal-mock-body { padding: 20px; }
+.cal-nav-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.cal-nav-title {
+  font-family: var(--font-h); font-size: 11px;
+  color: var(--text); letter-spacing: 2px;
+}
+.cal-nav-btn {
+  background: transparent; border: 1px solid var(--border2);
+  color: var(--muted); width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border-radius: 3px; font-size: 12px;
+  transition: color 0.2s;
+}
+.cal-nav-btn:hover { color: var(--accent); }
+.cal-month-stat-bar {
+  display: flex; gap: 16px; margin-bottom: 12px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.cms-item { display: flex; flex-direction: column; gap: 2px; }
+.cms-val { font-family: var(--font-h); font-size: 13px; font-weight: 700; }
+.cms-label { font-size: 9px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+.cal-dow-row {
+  display: grid; grid-template-columns: repeat(7,1fr);
+  gap: 2px; margin-bottom: 3px;
+}
+.cal-dow-lbl {
+  font-family: var(--font-h); font-size: 7px; color: var(--muted);
+  text-align: center; letter-spacing: 1px;
+}
+.cal-grid-mock {
+  display: grid; grid-template-columns: repeat(7,1fr); gap: 2px;
+}
+.ccell {
+  border-radius: 3px; border: 1px solid var(--border);
+  background: rgba(13,20,30,0.5); padding: 4px 5px;
+  min-height: 58px; display: flex; flex-direction: column; gap: 1px;
+}
+.ccell.empty { background: transparent; border-color: transparent; }
+.ccell.win { background: rgba(0,255,127,0.05); border-color: rgba(0,255,127,0.22); }
+.ccell.loss { background: rgba(255,76,76,0.05); border-color: rgba(255,76,76,0.22); }
+.ccell.today { border-color: var(--accent); position: relative; }
+.ccell.today::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:var(--accent); }
+.ccell-day { font-family: var(--font-h); font-size: 8px; color: var(--muted); }
+.ccell.today .ccell-day { color: var(--accent); }
+.ccell-pnl { font-family: var(--font-h); font-size: 11px; font-weight: 700; }
+.ccell-meta { font-size: 8px; color: var(--muted); }
+.ccell-rr { font-family: var(--font-h); font-size: 7px; margin-top: auto; }
+
 </style>
 </head>
 <body>
@@ -1232,7 +1286,7 @@ footer {
     <li><a href="#analytics">Analytics</a></li>
     <li><a href="#ranks">Ranks</a></li>
     <li><a href="#faq">FAQ</a></li>
-    <li><a href="index.html" class="nav-cta">Launch App →</a></li>
+    <li><a href="index.html" class="nav-cta">Get Started →</a></li>
   </ul>
 </nav>
 
@@ -1262,7 +1316,7 @@ footer {
 
   <div class="hero-actions">
     <a href="index.html" class="btn-primary">
-      ⚡ Start Logging Free
+      ⚡ Get Started — Free
     </a>
     <a href="#features" class="btn-ghost">
       See Features ↓
@@ -1480,6 +1534,152 @@ footer {
         <li>Monthly and yearly report cards with best/worst day</li>
         <li>What-If simulator — replay without bad trades</li>
         <li>Risk adherence tracking per your set guardrails</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════
+  CALENDAR SHOWCASE
+═══════════════════════════════════════════════════════ -->
+<section style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+  <div class="showcase reverse">
+    <div class="mock-wrap reveal">
+      <div class="mock-screen">
+        <div class="mock-titlebar">
+          <div class="dot dot-r"></div>
+          <div class="dot dot-y"></div>
+          <div class="dot dot-g"></div>
+          <span class="mock-title-text">ANALYTICS — TRADE CALENDAR</span>
+        </div>
+        <div class="cal-mock-body">
+          <div class="cal-nav-row">
+            <div class="cal-nav-btn">‹</div>
+            <span class="cal-nav-title">MARCH 2026</span>
+            <div class="cal-nav-btn">›</div>
+            <div style="margin-left:auto;font-family:var(--font-h);font-size:8px;color:var(--accent);border:1px solid rgba(0,191,255,0.3);padding:3px 10px;border-radius:2px;letter-spacing:1px;">TODAY</div>
+          </div>
+          <div class="cal-month-stat-bar">
+            <div class="cms-item">
+              <span class="cms-val" style="color:var(--win)">+$3,841</span>
+              <span class="cms-label">Monthly P&L</span>
+            </div>
+            <div class="cms-item">
+              <span class="cms-val" style="color:var(--text)">18</span>
+              <span class="cms-label">Trades</span>
+            </div>
+            <div class="cms-item">
+              <span class="cms-val" style="color:var(--win)">72%</span>
+              <span class="cms-label">Win Rate</span>
+            </div>
+            <div class="cms-item">
+              <span class="cms-val" style="color:var(--accent)">2.4R</span>
+              <span class="cms-label">Avg R:R</span>
+            </div>
+          </div>
+          <div class="cal-dow-row">
+            <div class="cal-dow-lbl">SUN</div><div class="cal-dow-lbl">MON</div>
+            <div class="cal-dow-lbl">TUE</div><div class="cal-dow-lbl">WED</div>
+            <div class="cal-dow-lbl">THU</div><div class="cal-dow-lbl">FRI</div>
+            <div class="cal-dow-lbl">SAT</div>
+          </div>
+          <div class="cal-grid-mock">
+            <!-- Row 1 -->
+            <div class="ccell empty"></div>
+            <div class="ccell empty"></div>
+            <div class="ccell empty"></div>
+            <div class="ccell empty"></div>
+            <div class="ccell empty"></div>
+            <div class="ccell empty"></div>
+            <div class="ccell"><span class="ccell-day">1</span></div>
+            <!-- Row 2 -->
+            <div class="ccell"><span class="ccell-day">2</span></div>
+            <div class="ccell win">
+              <span class="ccell-day">3</span>
+              <span class="ccell-pnl" style="color:var(--win)">+$620</span>
+              <span class="ccell-meta">2 trades · 100%</span>
+              <span class="ccell-rr" style="color:var(--win)">2.8R</span>
+            </div>
+            <div class="ccell win">
+              <span class="ccell-day">4</span>
+              <span class="ccell-pnl" style="color:var(--win)">+$440</span>
+              <span class="ccell-meta">1 trade · 100%</span>
+              <span class="ccell-rr" style="color:var(--gold)">1.9R</span>
+            </div>
+            <div class="ccell loss">
+              <span class="ccell-day">5</span>
+              <span class="ccell-pnl" style="color:var(--loss)">-$210</span>
+              <span class="ccell-meta">2 trades · 0%</span>
+              <span class="ccell-rr" style="color:var(--muted)">0.6R</span>
+            </div>
+            <div class="ccell win">
+              <span class="ccell-day">6</span>
+              <span class="ccell-pnl" style="color:var(--win)">+$890</span>
+              <span class="ccell-meta">3 trades · 67%</span>
+              <span class="ccell-rr" style="color:var(--win)">3.1R</span>
+            </div>
+            <div class="ccell win">
+              <span class="ccell-day">7</span>
+              <span class="ccell-pnl" style="color:var(--win)">+$350</span>
+              <span class="ccell-meta">1 trade · 100%</span>
+              <span class="ccell-rr" style="color:var(--gold)">1.4R</span>
+            </div>
+            <div class="ccell"><span class="ccell-day">8</span></div>
+            <!-- Row 3 -->
+            <div class="ccell"><span class="ccell-day">9</span></div>
+            <div class="ccell loss">
+              <span class="ccell-day">10</span>
+              <span class="ccell-pnl" style="color:var(--loss)">-$175</span>
+              <span class="ccell-meta">2 trades · 50%</span>
+              <span class="ccell-rr" style="color:var(--muted)">0.9R</span>
+            </div>
+            <div class="ccell win">
+              <span class="ccell-day">11</span>
+              <span class="ccell-pnl" style="color:var(--win)">+$1,050</span>
+              <span class="ccell-meta">2 trades · 100%</span>
+              <span class="ccell-rr" style="color:var(--win)">4.2R</span>
+            </div>
+            <div class="ccell win">
+              <span class="ccell-day">12</span>
+              <span class="ccell-pnl" style="color:var(--win)">+$380</span>
+              <span class="ccell-meta">1 trade · 100%</span>
+              <span class="ccell-rr" style="color:var(--gold)">1.6R</span>
+            </div>
+            <div class="ccell loss">
+              <span class="ccell-day">13</span>
+              <span class="ccell-pnl" style="color:var(--loss)">-$290</span>
+              <span class="ccell-meta">3 trades · 33%</span>
+              <span class="ccell-rr" style="color:var(--muted)">0.7R</span>
+            </div>
+            <div class="ccell win">
+              <span class="ccell-day">14</span>
+              <span class="ccell-pnl" style="color:var(--win)">+$560</span>
+              <span class="ccell-meta">2 trades · 100%</span>
+              <span class="ccell-rr" style="color:var(--win)">2.2R</span>
+            </div>
+            <div class="ccell today">
+              <span class="ccell-day">15</span>
+              <span class="ccell-pnl" style="color:var(--win)">+$327</span>
+              <span class="ccell-meta">1 trade · 100%</span>
+              <span class="ccell-rr" style="color:var(--gold)">1.8R</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="showcase-text reveal reveal-delay-1">
+      <p class="section-label">Analytics · Visual</p>
+      <h2 class="section-title">Trade <span class="accent">Calendar</span><br>See Every Day At Once</h2>
+      <p class="section-desc">
+        Your entire trading history laid out as a calendar. Green days, red days, your best weeks — all visible at a glance without scrolling through hundreds of rows.
+      </p>
+      <ul class="feature-list">
+        <li>Every day shows P&L, trade count, win rate, and avg R:R</li>
+        <li>Green/red/yellow color-coded at a glance — spot your patterns instantly</li>
+        <li>Weekly P&L summary column on the right of each week</li>
+        <li>Monthly stats bar — total P&L, trades, win rate, avg R:R for the month</li>
+        <li>Navigate back through every month of your trading history</li>
+        <li>Today always highlighted — know exactly where you stand</li>
       </ul>
     </div>
   </div>
@@ -1730,55 +1930,73 @@ footer {
     <div class="feature-card reveal">
       <span class="fc-icon">📓</span>
       <div class="fc-title">Trade Journal</div>
-      <p class="fc-desc">Log every entry and exit with price, size, SL, TP, session auto-detection, and screenshot upload.</p>
+      <p class="fc-desc">Log every entry and exit with price, size, SL, multi-TP, session auto-detection, and screenshot upload.</p>
       <span class="fc-tag">Core</span>
     </div>
     <div class="feature-card reveal reveal-delay-1">
+      <span class="fc-icon">📆</span>
+      <div class="fc-title">Trade Calendar</div>
+      <p class="fc-desc">Visual month-by-month calendar. Green days, red days — P&L, win rate, and avg R:R on every cell.</p>
+      <span class="fc-tag">Visual</span>
+    </div>
+    <div class="feature-card reveal reveal-delay-2">
       <span class="fc-icon">🧮</span>
-      <div class="fc-title">Live RR Calculator</div>
-      <p class="fc-desc">Real-time risk/reward preview as you type. Weighted average for multiple exit points.</p>
+      <div class="fc-title">Live R:R Calculator</div>
+      <p class="fc-desc">Auto-calculates R:R from Entry + Exit + Units in real time. No stop loss required — always shows a number.</p>
       <span class="fc-tag">Smart</span>
     </div>
-    <div class="feature-card reveal reveal-delay-2">
+    <div class="feature-card reveal reveal-delay-3">
       <span class="fc-icon">🧬</span>
       <div class="fc-title">Mindset Tagging</div>
-      <p class="fc-desc">Tag each trade with 20+ psychological states. See which emotions are costing you P&L.</p>
+      <p class="fc-desc">Tag each trade with 20+ psychological states. See exactly which emotions are costing you P&L.</p>
       <span class="fc-tag">Psychology</span>
     </div>
-    <div class="feature-card reveal reveal-delay-3">
+    <div class="feature-card reveal">
       <span class="fc-icon">🎯</span>
       <div class="fc-title">Daily Quests</div>
-      <p class="fc-desc">Dynamic missions that adapt to your trading patterns. Complete them to earn XP and rank faster.</p>
+      <p class="fc-desc">Dynamic missions that adapt to your trading behavior. Complete them to earn XP and climb the ranks faster.</p>
       <span class="fc-tag">Gamification</span>
     </div>
-    <div class="feature-card reveal">
-      <span class="fc-icon">📅</span>
+    <div class="feature-card reveal reveal-delay-1">
+      <span class="fc-icon">📊</span>
       <div class="fc-title">Reports</div>
-      <p class="fc-desc">Weekly, monthly, and yearly breakdowns. Best/worst day, profitable months, annual return %.</p>
+      <p class="fc-desc">Weekly, monthly, and yearly breakdowns. Best/worst day, profitable months, annual return on capital.</p>
       <span class="fc-tag">Reports</span>
     </div>
-    <div class="feature-card reveal reveal-delay-1">
+    <div class="feature-card reveal reveal-delay-2">
       <span class="fc-icon">☁️</span>
       <div class="fc-title">Cloud Sync</div>
-      <p class="fc-desc">Supabase-powered real-time sync across all your devices. Trades are never lost.</p>
+      <p class="fc-desc">Full trade data backed up to Supabase. Every field, every note — restored 100% intact on any device.</p>
       <span class="fc-tag">Cloud</span>
     </div>
-    <div class="feature-card reveal reveal-delay-2">
+    <div class="feature-card reveal reveal-delay-3">
       <span class="fc-icon">⏱</span>
       <div class="fc-title">Multi-TP Support</div>
-      <p class="fc-desc">Log multiple take-profit exits with percentage allocation. Weighted average exit calculated automatically.</p>
+      <p class="fc-desc">Log multiple take-profit exits with percentage size per TP. Weighted average exit calculated automatically.</p>
       <span class="fc-tag">Advanced</span>
     </div>
-    <div class="feature-card reveal reveal-delay-3">
+    <div class="feature-card reveal">
       <span class="fc-icon">📤</span>
       <div class="fc-title">CSV Import / Export</div>
-      <p class="fc-desc">Bring your existing trades in from any broker. Export everything anytime — your data, always yours.</p>
+      <p class="fc-desc">Import your existing history from any broker. Export everything anytime — your data is always yours.</p>
       <span class="fc-tag">Portability</span>
     </div>
-    <div class="feature-card reveal">
+    <div class="feature-card reveal reveal-delay-1">
+      <span class="fc-icon">🌡</span>
+      <div class="fc-title">Tilt Meter</div>
+      <p class="fc-desc">Real-time emotional state scoring. Automatically locks your journal when tilt hits critical — with a quiz to unlock.</p>
+      <span class="fc-tag">Protection</span>
+    </div>
+    <div class="feature-card reveal reveal-delay-2">
+      <span class="fc-icon">🧠</span>
+      <div class="fc-title">AI Smart Search</div>
+      <p class="fc-desc">Search your trade history in plain language. "FOMO after a losing streak" — Pinecone finds it instantly.</p>
+      <span class="fc-tag">AI · Pinecone</span>
+    </div>
+    <div class="feature-card reveal reveal-delay-3">
       <span class="fc-icon">🌍</span>
-      <div class="fc-title">74 Timezones</div>
-      <p class="fc-desc">Full IANA timezone support from UTC-12 to UTC+14. Tilt resets at your midnight, not ours.</p>
+      <div class="fc-title">74 Global Timezones</div>
+      <p class="fc-desc">Full IANA timezone support UTC-12 to UTC+14. Half-hour offsets included. Tilt resets at your midnight.</p>
       <span class="fc-tag">Global</span>
     </div>
   </div>
@@ -1876,7 +2094,7 @@ footer {
   </h2>
   <p class="reveal reveal-delay-1">Your edge is already there. TradeROW helps you stop getting in the way of it.</p>
   <div class="hero-actions reveal reveal-delay-2">
-    <a href="index.html" class="btn-primary">⚡ Launch TradeROW Free</a>
+    <a href="index.html" class="btn-primary">⚡ Get Started Free</a>
     <a href="#features" class="btn-ghost">See All Features</a>
   </div>
   <span class="free-badge reveal reveal-delay-3">✓ FREE FOREVER · NO CREDIT CARD · NO CATCH</span>
@@ -1902,7 +2120,7 @@ footer {
   <div class="footer-col">
     <h4>For Traders</h4>
     <ul>
-      <li><a href="index.html">Launch App</a></li>
+      <li><a href="index.html">Get Started</a></li>
       <li><a href="#faq">FAQ</a></li>
       <li><a href="#">Leaderboard</a></li>
       <li><a href="#">Changelog</a></li>
