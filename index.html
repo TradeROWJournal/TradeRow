@@ -4431,10 +4431,23 @@ function clearModalForm(){
   clearTagSelections();
   clearTPRows();
   uploadedImgData=null;
-  if($('ss-img-preview'))$('ss-img-preview').style.display='none';
+  if($('ss-img-preview'))   $('ss-img-preview').style.display='none';
+  if($('ss-preview-img'))   $('ss-preview-img').src='';
+  // Reliably clear file input — clone trick handles Safari/iOS not updating filename label
+  const fi=$('f-screenshot-file');
+  if(fi){ const clone=fi.cloneNode(true); fi.parentNode.replaceChild(clone,fi); }
   setSsType('link');
 }
-function closeModal(){ $('modal').classList.remove('open'); editId=null; }
+function closeModal(){
+  $('modal').classList.remove('open');
+  editId=null;
+  uploadedImgData=null;
+  if($('ss-img-preview'))    $('ss-img-preview').style.display='none';
+  if($('ss-preview-img'))    $('ss-preview-img').src='';
+  // Clone trick: guarantees filename label clears on all browsers including Safari/iOS
+  const fi=$('f-screenshot-file');
+  if(fi){ const clone=fi.cloneNode(true); fi.parentNode.replaceChild(clone,fi); }
+}
 
 function openProfileEdit(){
   const p=(() => {try{return JSON.parse(localStorage.getItem(LS.PROFILE))||{};}catch{return {};}})();
@@ -4464,7 +4477,12 @@ function handleImgUpload(inp){
   reader.onload=e=>{uploadedImgData=e.target.result;$('ss-preview-img').src=uploadedImgData;$('ss-img-preview').style.display='flex';};
   reader.readAsDataURL(file);
 }
-function clearImgUpload(){uploadedImgData=null;$('ss-img-preview').style.display='none';$('f-screenshot-file').value='';}
+function clearImgUpload(){
+  uploadedImgData=null;
+  if($('ss-img-preview'))   $('ss-img-preview').style.display='none';
+  if($('f-screenshot-file'))$('f-screenshot-file').value='';
+  if($('ss-preview-img'))   $('ss-preview-img').src='';
+}
 function handleAvatarUpload(inp){
   const file=inp.files[0]; if(!file)return;
   if(file.size>2*1024*1024){showToast('Image too large (max 2MB)',true);return;}
@@ -4500,13 +4518,23 @@ function calcPreview(){
   let holdMins=null;
   if(et&&xt){ const diff=(new Date(xt)-new Date(et))/60000; if(diff>0)holdMins=diff; }
 
-  // R:R
+  // R:R — use actual exit price (or weighted avg of TPs) vs SL
+  // Fallback: if SL not set but risk% is configured, derive risk distance from it
   let rrr=0, riskDollar=0;
-  const tpForRR=tps.length>0?tps[0].price:ex;
-  if(sl&&tpForRR&&entry){
-    const riskR=Math.abs(entry-sl), rewardR=Math.abs(tpForRR-entry);
-    if(riskR>0){rrr=Math.round((rewardR/riskR)*100)/100;}
-    riskDollar=riskR*size;
+  const capital2=parseFloat(localStorage.getItem(LS.CAPITAL)||0);
+  const riskProfile2=getRiskProfile();
+  let derivedSL=sl;
+  if(!derivedSL && capital2 && riskProfile2.riskPT && size && entry) {
+    // Estimate risk per unit from the risk % setting
+    const riskDollarEst=(capital2*riskProfile2.riskPT/100);
+    const riskPerUnit=riskDollarEst/size;
+    derivedSL=dir==='Long'?entry-riskPerUnit:entry+riskPerUnit;
+  }
+  if(derivedSL && entry && effectiveExit) {
+    const riskR   = Math.abs(entry - derivedSL);
+    const rewardR = Math.abs(effectiveExit - entry);
+    if(riskR > 0) { rrr = Math.round((rewardR / riskR) * 100) / 100; }
+    riskDollar = riskR * size;
   }
   const capital=parseFloat(localStorage.getItem(LS.CAPITAL)||0);
   const riskPct=capital&&riskDollar?parseFloat(((riskDollar/capital)*100).toFixed(2)):0;
@@ -4873,13 +4901,19 @@ function saveTrade(){
   const balBefore = capital + netPnlExcludingThis;
   const balAfter  = balBefore + netPnl;
 
-  // R:R calculation
+  // R:R calculation — uses effectiveExit (weighted avg of TPs, or plain exit price) vs SL
+  // If no SL entered, falls back to deriving risk from the user's configured risk % setting
   const slVal = parseFloat($('f-sl')?.value) || 0;
-  const tpVal = tps.length>0?tps[0].price:(parseFloat($('f-tp')?.value)||0);
   let rrr = 0;
-  if(slVal && tpVal && entry) {
-    const risk = Math.abs(entry - slVal);
-    const reward = Math.abs(tpVal - entry);
+  let riskSL = slVal;
+  if(!riskSL && capital && riskProfile.riskPT && size && entry) {
+    const riskDollarEst = capital * riskProfile.riskPT / 100;
+    const riskPerUnit   = riskDollarEst / size;
+    riskSL = dir === 'Long' ? entry - riskPerUnit : entry + riskPerUnit;
+  }
+  if(riskSL && entry && effectiveExit) {
+    const risk   = Math.abs(entry - riskSL);
+    const reward = Math.abs(effectiveExit - entry);
     if(risk > 0) rrr = Math.round((reward / risk) * 100) / 100;
   }
 
@@ -6582,7 +6616,7 @@ function renderMobileTradeCards(filteredTrades){
       </div>
       <div class="tc-grid">
         <div class="tc-item"><div class="tc-label">Net P&L</div><div class="tc-val ${pnlClass}">${fmt(t.netPnl)}</div></div>
-        <div class="tc-item"><div class="tc-label">R:R</div><div class="tc-val">${t.rrr?t.rrr.toFixed(2):'—'}</div></div>
+        <div class="tc-item"><div class="tc-label">R:R</div><div class="tc-val" style="color:${(t.rrr||t.rr||0)>=2?'var(--win)':(t.rrr||t.rr||0)>=1?'var(--gold)':'var(--muted)'}">${(t.rrr||t.rr||0)>0?(t.rrr||t.rr).toFixed(2):'—'}</div></div>
         <div class="tc-item"><div class="tc-label">Session</div><div class="tc-val">${t.session||'—'}</div></div>
         <div class="tc-item"><div class="tc-label">Entry</div><div class="tc-val" style="font-size:10px;">${t.entryPrice||'—'}</div></div>
         <div class="tc-item"><div class="tc-label">Exit</div><div class="tc-val" style="font-size:10px;">${t.exitPrice||'—'}</div></div>
