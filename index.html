@@ -735,6 +735,38 @@ body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse
 .analytics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-bottom:18px;}
 .chart-card{background:var(--surface);border:1px solid var(--border);padding:11px 13px;position:relative;overflow:hidden;min-width:0;}
 .chart-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,191,255,0.3),transparent);}
+
+/* ── TRADE CALENDAR ── */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:8px;}
+.cal-dow{font-family:var(--font-d);font-size:8px;letter-spacing:1px;color:var(--muted);text-align:center;padding:4px 0 6px;text-transform:uppercase;}
+.cal-cell{
+  min-height:72px;border-radius:4px;border:1px solid var(--border);
+  background:rgba(13,20,30,0.5);padding:5px 6px;
+  display:flex;flex-direction:column;gap:2px;cursor:default;
+  transition:border-color 0.15s;position:relative;overflow:hidden;
+}
+.cal-cell:hover{border-color:rgba(0,191,255,0.35);}
+.cal-cell.cal-empty{background:transparent;border-color:transparent;}
+.cal-cell.cal-today{border-color:rgba(0,191,255,0.5);}
+.cal-cell.cal-today::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);}
+.cal-cell.cal-win{background:rgba(0,255,127,0.05);border-color:rgba(0,255,127,0.2);}
+.cal-cell.cal-loss{background:rgba(255,76,76,0.05);border-color:rgba(255,76,76,0.2);}
+.cal-cell.cal-be{background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.15);}
+.cal-day-num{font-family:var(--font-d);font-size:9px;color:var(--muted);line-height:1;}
+.cal-cell.cal-today .cal-day-num{color:var(--accent);font-weight:700;}
+.cal-pnl{font-family:var(--font-d);font-size:12px;font-weight:700;line-height:1.2;margin-top:2px;}
+.cal-pnl.pos{color:var(--win);}
+.cal-pnl.neg{color:var(--loss);}
+.cal-pnl.zero{color:var(--gold);}
+.cal-meta{font-family:var(--font-b);font-size:9px;color:var(--muted);line-height:1.3;}
+.cal-rr{font-family:var(--font-d);font-size:8px;margin-top:auto;}
+.cal-week-col{display:flex;flex-direction:column;gap:8px;padding-left:8px;min-width:100px;}
+.cal-week-row{background:rgba(13,20,30,0.6);border:1px solid var(--border);border-radius:4px;padding:8px 10px;}
+.cal-week-label{font-family:var(--font-d);font-size:8px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;}
+.cal-week-pnl{font-family:var(--font-d);font-size:14px;font-weight:700;}
+.cal-week-sub{font-family:var(--font-b);font-size:9px;color:var(--muted);margin-top:2px;}
+.cal-outer{display:grid;grid-template-columns:1fr 108px;gap:10px;align-items:start;}
+@media(max-width:700px){.cal-outer{grid-template-columns:1fr;} .cal-week-col{display:none;} .cal-cell{min-height:52px;}}
 .chart-title{font-family:var(--font-d);font-size:8px;font-weight:600;margin-bottom:8px;color:var(--muted);display:flex;align-items:center;gap:7px;text-transform:uppercase;letter-spacing:1px;}
 .chart-dot{width:5px;height:5px;background:var(--accent);box-shadow:0 0 4px var(--accent);flex-shrink:0;}
 .chart-wrap{position:relative;height:clamp(130px,17vh,210px);width:100%;min-width:0;}
@@ -2491,6 +2523,20 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
 
     <!-- ══ ANALYTICS PAGE ══ -->
     <div class="page content" id="page-analytics">
+
+      <!-- ── TRADE CALENDAR ───────────────────────────────── -->
+      <div class="table-card" style="margin-bottom:12px;">
+        <div class="table-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button onclick="calShiftMonth(-1)" style="background:transparent;border:1px solid var(--border);color:var(--text);padding:4px 12px;cursor:pointer;font-size:14px;border-radius:3px;line-height:1;">‹</button>
+            <span id="cal-title" style="font-family:var(--font-d);font-size:13px;font-weight:700;color:var(--text);letter-spacing:2px;min-width:140px;text-align:center;">— —</span>
+            <button onclick="calShiftMonth(1)" style="background:transparent;border:1px solid var(--border);color:var(--text);padding:4px 12px;cursor:pointer;font-size:14px;border-radius:3px;line-height:1;">›</button>
+            <button onclick="calGoToday()" style="background:transparent;border:1px solid rgba(0,191,255,0.3);color:var(--accent);font-family:var(--font-d);font-size:8px;letter-spacing:2px;padding:5px 12px;cursor:pointer;border-radius:2px;">TODAY</button>
+          </div>
+          <div id="cal-month-stats" style="display:flex;gap:16px;font-family:var(--font-b);font-size:12px;flex-wrap:wrap;"></div>
+        </div>
+        <div id="cal-wrap" style="padding:0 10px 12px;"></div>
+      </div>
       <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:12px;">
         <div class="stat-card neutral"><div class="stat-label">⏱ Avg Hold</div><div class="stat-val" id="dur-avg" style="font-size:15px;">—</div><div class="stat-sub" id="dur-avg-sub">across timed</div></div>
         <div class="stat-card neutral"><div class="stat-label">⚡ Fastest</div><div class="stat-val" id="dur-min" style="font-size:14px;color:var(--win)">—</div><div class="stat-sub" id="dur-min-pair">—</div></div>
@@ -5289,6 +5335,149 @@ function renderTradeTable(){
   renderMobileTradeCards(filtered);
 }
 
+// ─── TRADE CALENDAR ──────────────────────────────────────────────
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0-based
+
+function calShiftMonth(dir) {
+  calMonth += dir;
+  if(calMonth > 11){ calMonth = 0; calYear++; }
+  if(calMonth < 0) { calMonth = 11; calYear--; }
+  renderCalendar();
+}
+function calGoToday() {
+  calYear  = new Date().getFullYear();
+  calMonth = new Date().getMonth();
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const wrap = $('cal-wrap'); if(!wrap) return;
+  const todayStr = getTodayInUserTZ();
+
+  // Build day→trades map for this month
+  const dayMap = {};
+  trades.forEach(t => {
+    const d = new Date(t.entryTime || t.date || '');
+    if(isNaN(d)) return;
+    if(d.getFullYear() !== calYear || d.getMonth() !== calMonth) return;
+    const key = d.getDate();
+    if(!dayMap[key]) dayMap[key] = [];
+    dayMap[key].push(t);
+  });
+
+  // Month title
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  if($('cal-title')) $('cal-title').textContent = `${MONTHS[calMonth]} ${calYear}`;
+
+  // Month stats bar
+  let mPnl=0, mWins=0, mLosses=0, mTrades=0, mRR=0, rCount=0;
+  Object.values(dayMap).forEach(dayTrades => {
+    dayTrades.forEach(t => {
+      mPnl += t.netPnl||t.pnl||0;
+      mTrades++;
+      if(t.result==='Win') mWins++;
+      if(t.result==='Loss') mLosses++;
+      const r = t.rrr||t.rr||0;
+      if(r>0){ mRR+=r; rCount++; }
+    });
+  });
+  const mWR = mTrades ? Math.round(mWins/mTrades*100) : 0;
+  const mAvgRR = rCount ? (mRR/rCount).toFixed(2) : '—';
+  const pnlC = mPnl>0?'var(--win)':mPnl<0?'var(--loss)':'var(--gold)';
+  const statsEl = $('cal-month-stats');
+  if(statsEl) statsEl.innerHTML = `
+    <span>Monthly P&L: <b style="color:${pnlC}">${mPnl>=0?'+':''}${fmtMoney(mPnl)}</b></span>
+    <span style="color:var(--muted);">|</span>
+    <span>Trades: <b style="color:var(--text)">${mTrades}</b></span>
+    <span style="color:var(--muted);">|</span>
+    <span>Win Rate: <b style="color:${mWR>=50?'var(--win)':'var(--loss)'}">${mWR}%</b></span>
+    <span style="color:var(--muted);">|</span>
+    <span>Avg R:R: <b style="color:var(--accent)">${mAvgRR}R</b></span>
+  `;
+
+  // Calendar grid
+  const firstDow = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+
+  const DOWS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  let gridHTML = '<div class="cal-grid">';
+  // Day-of-week headers
+  DOWS.forEach(d => { gridHTML += `<div class="cal-dow">${d}</div>`; });
+  // Empty leading cells
+  for(let i=0;i<firstDow;i++) gridHTML += '<div class="cal-cell cal-empty"></div>';
+
+  // Week summary data
+  const weeks = [];
+  let weekPnl=0, weekTrades=0, weekWins=0, weekStart=null;
+
+  for(let day=1; day<=daysInMonth; day++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const isToday = dateStr === todayStr;
+    const dayTrades = dayMap[day] || [];
+    const dow = (firstDow + day - 1) % 7;
+
+    if(!weekStart) weekStart = day;
+    weekTrades += dayTrades.length;
+
+    let cls = 'cal-cell';
+    if(isToday) cls += ' cal-today';
+
+    if(dayTrades.length === 0) {
+      gridHTML += `<div class="${cls}"><span class="cal-day-num">${day}</span></div>`;
+    } else {
+      const dayPnl  = dayTrades.reduce((s,t)=>s+(t.netPnl||t.pnl||0),0);
+      const dayWins = dayTrades.filter(t=>t.result==='Win').length;
+      const dayWR   = Math.round(dayWins/dayTrades.length*100);
+      const rVals   = dayTrades.map(t=>t.rrr||t.rr||0).filter(r=>r>0);
+      const dayRR   = rVals.length ? (rVals.reduce((s,r)=>s+r,0)/rVals.length).toFixed(2) : null;
+
+      weekPnl  += dayPnl;
+      weekWins += dayWins;
+
+      const pnlCls = dayPnl>0.01?'pos':dayPnl<-0.01?'neg':'zero';
+      if(dayPnl>0.01) cls += ' cal-win';
+      else if(dayPnl<-0.01) cls += ' cal-loss';
+      else cls += ' cal-be';
+
+      const pnlStr = (dayPnl>=0?'+':'')+fmtMoney(dayPnl);
+      gridHTML += `<div class="${cls}">
+        <span class="cal-day-num">${day}</span>
+        <span class="cal-pnl ${pnlCls}">${pnlStr}</span>
+        <span class="cal-meta">${dayTrades.length} trade${dayTrades.length>1?'s':''} · ${dayWR}% WR</span>
+        ${dayRR?`<span class="cal-rr" style="color:${parseFloat(dayRR)>=2?'var(--win)':parseFloat(dayRR)>=1?'var(--gold)':'var(--muted)'}">${dayRR}R avg</span>`:''}
+      </div>`;
+    }
+
+    // End of week — save summary
+    if(dow === 6 || day === daysInMonth) {
+      weeks.push({ label:`Week ${weeks.length+1}`, pnl:weekPnl, trades:weekTrades, wins:weekWins, start:weekStart, end:day });
+      weekPnl=0; weekTrades=0; weekWins=0; weekStart=null;
+    }
+  }
+
+  // Fill trailing cells to complete last row
+  const totalCells = firstDow + daysInMonth;
+  const trailing   = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  for(let i=0;i<trailing;i++) gridHTML += '<div class="cal-cell cal-empty"></div>';
+  gridHTML += '</div>';
+
+  // Weekly summary column
+  let weekColHTML = '<div class="cal-week-col">';
+  weeks.forEach(w => {
+    const wC = w.pnl>0.01?'var(--win)':w.pnl<-0.01?'var(--loss)':'var(--gold)';
+    const wWR = w.trades ? Math.round(w.wins/w.trades*100) : 0;
+    weekColHTML += `<div class="cal-week-row">
+      <div class="cal-week-label">${w.label}</div>
+      <div class="cal-week-pnl" style="color:${wC}">${w.pnl>=0?'+':''}${fmtMoney(w.pnl)}</div>
+      <div class="cal-week-sub">${w.trades} trade${w.trades!==1?'s':''} · ${wWR}% WR</div>
+    </div>`;
+  });
+  weekColHTML += '</div>';
+
+  wrap.innerHTML = `<div class="cal-outer">${gridHTML}${weekColHTML}</div>`;
+}
+
 // ─── ANALYTICS ───────────────────────────────────────────────────
 function renderAnalytics(){
   const timed=trades.filter(t=>t.holdMinutes!=null);
@@ -5320,6 +5509,7 @@ function renderAnalytics(){
   renderAnalyticsCharts();
   renderBehaviorTable();
   populateWhatIfBehaviors();
+  renderCalendar();
 }
 
 function renderAnalyticsCharts(){
