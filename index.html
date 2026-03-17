@@ -2483,7 +2483,7 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
         <select id="result-filter" onchange="renderTradeTable()"><option value="">All Results</option><option>Win</option><option>Loss</option><option>BE</option></select>
         <button class="btn btn-ghost" id="smart-search-btn" onclick="toggleSmartSearch()" title="AI Semantic Search — find trades by meaning, not just keywords">🧠 Smart Search</button>
         <button class="btn btn-ghost" onclick="exportCSV()">⬇ Export</button>
-        <button class="btn btn-ghost" onclick="triggerImportCSV()">⬆ Import (CSV/Bybit)</button>
+        <button class="btn btn-ghost" onclick="triggerImportCSV()">⬆ Import (Bybit/BingX/CSV)</button>
       </div>
       <!-- Smart Search Panel -->
       <div id="smart-search-panel" style="display:none;background:#0a1520;border:1px solid rgba(0,191,255,0.2);border-radius:8px;padding:14px 16px;margin-bottom:12px;">
@@ -2748,7 +2748,7 @@ textarea{resize:vertical;min-height:60px;clip-path:none;}
       <div class="settings-card">
         <div class="settings-title">Data Management</div>
         <div class="settings-row"><div><div style="font-family:var(--font-b);font-size:13px;font-weight:700;">Export All Trades</div></div><button class="btn btn-ghost" onclick="exportCSV()">⬇ Export CSV</button></div>
-        <div class="settings-row"><div><div style="font-family:var(--font-b);font-size:13px;font-weight:700;">Import Trades from CSV</div></div><button class="btn btn-ghost" onclick="triggerImportCSV()">⬆ Import (CSV/Bybit)</button></div>
+        <div class="settings-row"><div><div style="font-family:var(--font-b);font-size:13px;font-weight:700;">Import Trades from CSV</div></div><button class="btn btn-ghost" onclick="triggerImportCSV()">⬆ Import (Bybit/BingX/CSV)</button></div>
         <div class="settings-row"><div><div style="font-family:var(--font-b);font-size:13px;font-weight:700;">Clear All Trades</div></div><button class="btn btn-danger" onclick="clearAll()">🗑 Clear All</button></div>
       </div>
     </div>
@@ -6420,7 +6420,7 @@ function exportCSV(){
   showToast('Exported '+trades.length+' trades');
 }
 // ─────────────────────────────────────────────────────────────
-// SMART IMPORTER — auto-detects format (Bybit XLSX, TradeROW CSV)
+// SMART IMPORTER — auto-detects format (Bybit XLSX, BingX XLSX, TradeROW CSV)
 // ─────────────────────────────────────────────────────────────
 
 function triggerImportCSV() {
@@ -6436,13 +6436,11 @@ function importTrades(file) {
   const reader = new FileReader();
   reader.onload = e => {
     const result = e.target.result;
-    // Detect format by file magic bytes (PK = ZIP = XLSX)
     const bytes = new Uint8Array(result.slice(0, 4));
     const isXLSX = bytes[0] === 0x50 && bytes[1] === 0x4B;
     if (isXLSX) {
-      parseBybitXLSX(result);
+      detectAndParseXLSX(result);
     } else {
-      // Fall back to text-based CSV
       const text = new TextDecoder('utf-8').decode(result);
       importCSV_text(text);
     }
@@ -6450,8 +6448,240 @@ function importTrades(file) {
   reader.readAsArrayBuffer(file);
 }
 
+// ── Detect which XLSX format and route ────────────────────────
+function detectAndParseXLSX(arrayBuffer) {
+  try {
+    const rows = readXLSXRows(arrayBuffer);
+    if (!rows || rows.length < 2) { showToast('Empty or unreadable file', true); return; }
+    const headers = rows[0];
+
+    // BingX: has "Open Time", "Futures / Direction", "Entry / Avg. Close"
+    if (headers.some(h => h === 'Open Time') && headers.some(h => (h||'').includes('Futures'))) {
+      parseBingXXLSX(rows);
+      return;
+    }
+    // Bybit: has "Time(UTC+8)", "Futures"
+    if (headers.some(h => h === 'Time(UTC+8)') || headers.some(h => h === 'Futures')) {
+      parseBybitXLSX_rows(rows);
+      return;
+    }
+    showToast('⚠ Unknown format. Supported: Bybit Futures & BingX Futures.', true);
+  } catch(err) {
+    console.error('XLSX import error:', err);
+    showToast('Import failed: ' + err.message, true);
+  }
+}
+
+// ── BINGX FUTURES PARSER ──────────────────────────────────────
+// Format: one row per trade, Excel date serials, combined fields
+function parseBingXXLSX(rows) {
+  try {
+    const headers = rows[0];
+    const hIdx = {};
+    headers.forEach((h, i) => { hIdx[h] = i; });
+
+    const get = (row, col) => (row[hIdx[col]] || '').toString().trim();
+
+    // Excel serial → JS Date (Excel epoch = Dec 30 1899)
+    function excelSerial(serial) {
+      const n = parseFloat(serial);
+      if (isNaN(n)) return null;
+      return new Date((n - 25569) * 86400 * 1000); // convert to Unix ms
+    }
+
+    function parseQty(s) {
+      s = (s||'').trim();
+      if (s.endsWith('k')) return parseFloat(s) * 1000;
+      return parseFloat(s) || 0;
+    }
+
+    const imported = [];
+
+    rows.slice(1).forEach((row, idx) => {
+      if (!row || row.every(c => !c)) return;
+
+      // Timestamps
+      const openDt  = excelSerial(get(row, 'Open Time'));
+      const closeDt = excelSerial(get(row, 'Close Time'));
+      if (!openDt || !closeDt) return;
+
+      const openISO  = openDt.toISOString();
+      const closeISO = closeDt.toISOString();
+      const holdMins = (closeDt - openDt) / 60000;
+
+      // "TRUMP (Long 75X)" or "Oil Brent (Short 200X)"
+      const futuresRaw = get(row, 'Futures / Direction');
+      const futM = futuresRaw.match(/^(.+?)\s*\((\w+)\s+(\d+)X\)$/i);
+      const pairBase  = futM ? futM[1].trim().replace(/\s+/g,'').toUpperCase() : futuresRaw.toUpperCase();
+      const direction = futM ? futM[2].toLowerCase() : 'long';
+      const leverage  = futM ? parseInt(futM[3]) : 1;
+      const pair      = pairBase.includes('USDT') ? pairBase : pairBase + '/USDT';
+
+      // "101.00 / 99.99"
+      const priceRaw = get(row, 'Entry / Avg. Close');
+      const priceM   = priceRaw.match(/([\d.]+)\s*\/\s*([\d.]+)/);
+      const entryPrice = priceM ? parseFloat(priceM[1]) : 0;
+      const exitPrice  = priceM ? parseFloat(priceM[2]) : 0;
+
+      // "63.43 / 63.43 TRUMP"  or  "14k / 9.8k COOKIE"
+      const qtyRaw = get(row, 'Total Opened / Closed');
+      const qtyM   = qtyRaw.match(/([\d.k]+)\s*\/\s*([\d.k]+)/i);
+      const posSize = qtyM ? parseQty(qtyM[2]) : 0;
+
+      // "+6.01 / +5.86 USDT"  — first = Realized PnL, second = Closed PnL (net)
+      const pnlRaw = get(row, 'Realized / Closed PnL');
+      const pnlM   = pnlRaw.match(/([+-]?[\d.]+)\s*\/\s*([+-]?[\d.]+)/);
+      const grossPnl = pnlM ? parseFloat(pnlM[1]) : 0;
+      const netPnl   = pnlM ? parseFloat(pnlM[2]) : 0;
+      const totalFees = Math.abs(parseFloat((grossPnl - netPnl).toFixed(6)));
+
+      const status   = get(row, 'Status'); // 'Fully closed' / 'Partially closed'
+      const result   = netPnl > 0.001 ? 'Win' : netPnl < -0.001 ? 'Loss' : 'BE';
+
+      // R:R from entry/exit (no SL in this format)
+      const riskPerUnit = entryPrice * 0.01;
+      const reward      = Math.abs(exitPrice - entryPrice);
+      const rrr         = riskPerUnit > 0 ? Math.round((reward / riskPerUnit) * 100) / 100 : 0;
+
+      imported.push({
+        id:           crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random(),
+        timestamp:    openISO,
+        date:         openISO,
+        entryTime:    openISO,
+        exitTime:     closeISO,
+        pair,
+        direction,
+        market_type:  detectMarketType(pair),
+        entry:        entryPrice,
+        entryPrice,
+        exitPrice,
+        posSize,
+        position_size: posSize,
+        pnl:          netPnl,
+        netPnl,
+        grossPnl,
+        result,
+        rrr,
+        rr:           rrr,
+        riskPct:      0,
+        totalFees,
+        balanceAfter: 0,
+        holdMinutes:  holdMins > 0 ? Math.round(holdMins) : null,
+        entryValue:   entryPrice * posSize,
+        exitValue:    exitPrice  * posSize,
+        notes:        `BingX ${leverage}x · ${status}`,
+        screenshot:   '',
+        behaviors:    [],
+        tags:         { psych: [], setup: [], strategy: [] },
+        riskAdherent: true,
+        source:       'bingx-import',
+      });
+    });
+
+    if (imported.length === 0) { showToast('No trades found in file', true); return; }
+
+    // Merge — skip duplicates by pair+entryTime
+    const existingKeys = new Set(trades.map(t => `${t.pair}::${t.entryTime}`));
+    const fresh = imported.filter(t => !existingKeys.has(`${t.pair}::${t.entryTime}`));
+
+    trades = [...fresh, ...trades];
+    trades.sort((a, b) => new Date(b.date) - new Date(a.date));
+    save(); renderAll();
+    fresh.forEach(t => { if (typeof syncTradeToSupabase === 'function') syncTradeToSupabase(t); });
+
+    showToast(`✅ Imported ${fresh.length} trade${fresh.length !== 1 ? 's' : ''} from BingX${imported.length > fresh.length ? ` (${imported.length - fresh.length} skipped)` : ''}`);
+
+  } catch(err) {
+    console.error('BingX import error:', err);
+    showToast('BingX import failed: ' + err.message, true);
+    if (window.sentryCapture) window.sentryCapture({ type:'exception', message:'parseBingXXLSX: '+err.message, context:{ source:'import' } });
+  }
+}
+
 // ── BYBIT FUTURES TRANSACTION HISTORY PARSER ─────────────────
 function parseBybitXLSX(arrayBuffer) {
+  try {
+    const rows = readXLSXRows(arrayBuffer);
+    parseBybitXLSX_rows(rows);
+  } catch(err) {
+    console.error('Bybit import error:', err);
+    showToast('Import failed: ' + err.message, true);
+  }
+}
+
+function parseBybitXLSX_rows(rows) {
+  try {
+    if (!rows || rows.length < 2) { showToast('Empty or unreadable file', true); return; }
+    const headers = rows[0];
+    const hIdx = {};
+    headers.forEach((h, i) => { hIdx[h] = i; });
+    const get = (row, col) => row[hIdx[col]] || '';
+
+    const tradeMap = new Map();
+
+    rows.slice(1).forEach(row => {
+      const time    = get(row, 'Time(UTC+8)');
+      const type    = get(row, 'type');
+      const detail  = get(row, 'Details');
+      const amount  = parseFloat(get(row, 'Amount')) || 0;
+      const newBal  = parseFloat(get(row, 'newAvailableAmount')) || 0;
+      const future  = get(row, 'Futures');
+
+      if (!future || !time || type === 'Transfer') return;
+
+      const key = `${future}::${time}`;
+      if (!tradeMap.has(key)) tradeMap.set(key, { key, time, future, pnl:0, fees:0, funding:0, detail:null, balance:0 });
+      const t = tradeMap.get(key);
+
+      if (type === 'Realized PnL')  { t.pnl += amount; t.detail = detail; t.balance = newBal; }
+      else if (type === 'Trading fee')  t.fees    += amount;
+      else if (type === 'Funding Fee')  t.funding += amount;
+    });
+
+    const imported = [];
+    tradeMap.forEach(t => {
+      if (t.pnl === 0 && t.fees === 0) return;
+      const netPnl   = t.pnl + t.fees;
+      const grossPnl = t.pnl;
+      const totalFees = Math.abs(t.fees);
+      const direction = (t.detail === 'Buy to Close') ? 'short' : 'long';
+      const rawPair   = t.future.replace(/-USDT$/, '');
+      const pair      = rawPair + '/USDT';
+      const dt        = new Date(t.time.replace(' ', 'T') + '+08:00');
+      const iso       = dt.toISOString();
+      const result    = netPnl > 0.001 ? 'Win' : netPnl < -0.001 ? 'Loss' : 'BE';
+
+      imported.push({
+        id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random(),
+        timestamp: iso, date: iso, entryTime: iso, exitTime: iso,
+        pair, direction, market_type: 'crypto',
+        entry: 0, entryPrice: 0, exitPrice: 0, posSize: 0, position_size: 0,
+        pnl: netPnl, netPnl, grossPnl, result, rrr: 0, rr: 0, riskPct: 0,
+        totalFees, balanceAfter: t.balance, holdMinutes: null,
+        entryValue: 0, exitValue: 0,
+        notes: `Bybit import. Funding: ${t.funding >= 0 ? '+' : ''}${t.funding.toFixed(4)} USDT`,
+        screenshot: '', behaviors: [], tags: { psych:[], setup:[], strategy:[] },
+        riskAdherent: true, source: 'bybit-import',
+      });
+    });
+
+    if (imported.length === 0) { showToast('No trades found in file', true); return; }
+    const existingKeys = new Set(trades.map(t => `${t.pair}::${t.date}`));
+    const fresh = imported.filter(t => !existingKeys.has(`${t.pair}::${t.date}`));
+    trades = [...fresh, ...trades];
+    trades.sort((a, b) => new Date(b.date) - new Date(a.date));
+    save(); renderAll();
+    fresh.forEach(t => { if (typeof syncTradeToSupabase === 'function') syncTradeToSupabase(t); });
+    showToast(`✅ Imported ${fresh.length} trade${fresh.length !== 1 ? 's' : ''} from Bybit${imported.length > fresh.length ? ` (${imported.length - fresh.length} skipped)` : ''}`);
+
+  } catch(err) {
+    console.error('Bybit import error:', err);
+    showToast('Bybit import failed: ' + err.message, true);
+    if (window.sentryCapture) window.sentryCapture({ type:'exception', message:'parseBybitXLSX_rows: '+err.message, context:{ source:'import' } });
+  }
+}
+
+
   try {
     // Parse XLSX ZIP manually — no library needed
     const rows = readXLSXRows(arrayBuffer);
