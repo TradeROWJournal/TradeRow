@@ -6780,9 +6780,28 @@ function importCSV(file) {
 }
 
 function importCSV_text(text) {
-  const lines = text.split('\n').filter(l => l.trim());
+  // Normalize all line endings (\r\n, \r, \n) to \n
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const lines = normalized.split('\n').filter(l => l.trim());
   if (lines.length < 2) { showToast('Empty CSV', true); return; }
+
   const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+
+  // ── Auto-detect BingX CSV (same format as BingX XLSX but CSV export) ──
+  if (headers.some(h => h === 'Open Time') && headers.some(h => h.includes('Futures'))) {
+    const rows = lines.map(line => line.split(',').map(c => c.trim().replace(/^"|"$/g, '')));
+    parseBingXCSV(rows);
+    return;
+  }
+
+  // ── Auto-detect Bybit CSV ──
+  if (headers.some(h => h === 'Time(UTC+8)') && headers.some(h => h === 'Futures')) {
+    const rows = lines.map(line => line.split(',').map(c => c.trim().replace(/^"|"$/g, '')));
+    parseBybitXLSX_rows(rows);
+    return;
+  }
+
+  // ── TradeROW native CSV ──
   const imported = [];
   for (let i = 1; i < lines.length; i++) {
     const vals = parseCSVLine(lines[i]);
@@ -6799,7 +6818,113 @@ function importCSV_text(text) {
   const kept = trades.filter(t => !newIds.has(t.id));
   trades = [...kept, ...imported];
   save(); renderAll();
-  showToast(`Imported ${imported.length} trades`);
+  showToast('Imported ' + imported.length + ' trades');
+}
+
+// ── BingX CSV parser (same logic as XLSX version but rows already parsed) ──
+function parseBingXCSV(rows) {
+  // BingX CSV has the same columns as XLSX — reuse the XLSX parser
+  // but fields use plain text dates instead of Excel serials
+  try {
+    const headers = rows[0];
+    const hIdx = {};
+    headers.forEach((h, i) => { hIdx[h] = i; });
+    const get = (row, col) => (row[hIdx[col]] || '').toString().trim();
+
+    function parseQty(s) {
+      s = (s||'').trim();
+      if (s.toLowerCase().endsWith('k')) return parseFloat(s) * 1000;
+      return parseFloat(s) || 0;
+    }
+
+    const imported = [];
+
+    rows.slice(1).forEach((row) => {
+      if (!row || row.every(c => !c)) return;
+
+      // Plain text dates: "2026-03-17 19:54:11"
+      const openStr  = get(row, 'Open Time');
+      const closeStr = get(row, 'Close Time');
+      if (!openStr || !closeStr) return;
+
+      const openDt  = new Date(openStr.replace(' ', 'T'));
+      const closeDt = new Date(closeStr.replace(' ', 'T'));
+      if (isNaN(openDt) || isNaN(closeDt)) return;
+
+      const openISO  = openDt.toISOString();
+      const closeISO = closeDt.toISOString();
+      const holdMins = (closeDt - openDt) / 60000;
+
+      // "TRUMP (Long 75X)"
+      const futuresRaw = get(row, 'Futures / Direction');
+      const futM = futuresRaw.match(/^(.+?)\s*\((\w+)\s+(\d+)X\)$/i);
+      const pairBase  = futM ? futM[1].trim().replace(/\s+/g,'').toUpperCase() : futuresRaw.toUpperCase();
+      const direction = futM ? futM[2].toLowerCase() : 'long';
+      const leverage  = futM ? parseInt(futM[3]) : 1;
+      const pair      = pairBase.includes('USDT') ? pairBase : pairBase + '/USDT';
+
+      // "101.00 / 99.99"
+      const priceRaw = get(row, 'Entry / Avg. Close');
+      const priceM   = priceRaw.match(/([\d.]+)\s*\/\s*([\d.]+)/);
+      const entryPrice = priceM ? parseFloat(priceM[1]) : 0;
+      const exitPrice  = priceM ? parseFloat(priceM[2]) : 0;
+
+      // "63.43 / 63.43 TRUMP"
+      const qtyRaw = get(row, 'Total Opened / Closed');
+      const qtyM   = qtyRaw.match(/([\d.k]+)\s*\/\s*([\d.k]+)/i);
+      const posSize = qtyM ? parseQty(qtyM[2]) : 0;
+
+      // "+6.01 / +5.86 USDT"
+      const pnlRaw = get(row, 'Realized / Closed PnL');
+      const pnlM   = pnlRaw.match(/([+-]?[\d.]+)\s*\/\s*([+-]?[\d.]+)/);
+      const grossPnl = pnlM ? parseFloat(pnlM[1]) : 0;
+      const netPnl   = pnlM ? parseFloat(pnlM[2]) : 0;
+      const totalFees = parseFloat(Math.abs(grossPnl - netPnl).toFixed(6));
+
+      const status  = get(row, 'Status');
+      const result  = netPnl > 0.001 ? 'Win' : netPnl < -0.001 ? 'Loss' : 'BE';
+
+      const riskPerUnit = entryPrice * 0.01;
+      const reward      = Math.abs(exitPrice - entryPrice);
+      const rrr         = riskPerUnit > 0 ? Math.round((reward / riskPerUnit) * 100) / 100 : 0;
+
+      imported.push({
+        id:            crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random(),
+        timestamp:     openISO,
+        date:          openISO,
+        entryTime:     openISO,
+        exitTime:      closeISO,
+        pair, direction,
+        market_type:   detectMarketType(pair),
+        entry:         entryPrice, entryPrice, exitPrice,
+        posSize, position_size: posSize,
+        pnl: netPnl, netPnl, grossPnl, result, rrr, rr: rrr,
+        riskPct: 0, totalFees, balanceAfter: 0,
+        holdMinutes:   holdMins > 0 ? Math.round(holdMins) : null,
+        entryValue:    entryPrice * posSize,
+        exitValue:     exitPrice  * posSize,
+        notes:         'BingX ' + leverage + 'x · ' + status,
+        screenshot:    '', behaviors: [],
+        tags:          { psych: [], setup: [], strategy: [] },
+        riskAdherent:  true,
+        source:        'bingx-import',
+      });
+    });
+
+    if (imported.length === 0) { showToast('No trades found in file', true); return; }
+
+    const existingKeys = new Set(trades.map(t => t.pair + '::' + t.entryTime));
+    const fresh = imported.filter(t => !existingKeys.has(t.pair + '::' + t.entryTime));
+    trades = [...fresh, ...trades];
+    trades.sort((a, b) => new Date(b.date) - new Date(a.date));
+    save(); renderAll();
+    fresh.forEach(t => { if (typeof syncTradeToSupabase === 'function') syncTradeToSupabase(t); });
+    showToast('✅ Imported ' + fresh.length + ' trade' + (fresh.length !== 1 ? 's' : '') + ' from BingX' + (imported.length > fresh.length ? ' (' + (imported.length - fresh.length) + ' skipped)' : ''));
+
+  } catch(err) {
+    console.error('BingX CSV import error:', err);
+    showToast('BingX CSV import failed: ' + err.message, true);
+  }
 }
 
 function parseCSVLine(line){
