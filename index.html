@@ -6451,13 +6451,13 @@ function importTrades(file) {
 }
 
 // ── Detect which XLSX format and route ────────────────────────
-function detectAndParseXLSX(arrayBuffer) {
+async function detectAndParseXLSX(arrayBuffer) {
   try {
-    const rows = readXLSXRows(arrayBuffer);
+    const rows = await readXLSXRows(arrayBuffer);
     if (!rows || rows.length < 2) { showToast('Empty or unreadable file', true); return; }
     const headers = rows[0];
 
-    // BingX: has "Open Time", "Futures / Direction", "Entry / Avg. Close"
+    // BingX: has "Open Time", "Futures / Direction"
     if (headers.some(h => h === 'Open Time') && headers.some(h => (h||'').includes('Futures'))) {
       parseBingXXLSX(rows);
       return;
@@ -6601,9 +6601,9 @@ function parseBingXXLSX(rows) {
 }
 
 // ── BYBIT FUTURES TRANSACTION HISTORY PARSER ─────────────────
-function parseBybitXLSX(arrayBuffer) {
+async function parseBybitXLSX(arrayBuffer) {
   try {
-    const rows = readXLSXRows(arrayBuffer);
+    const rows = await readXLSXRows(arrayBuffer);
     parseBybitXLSX_rows(rows);
   } catch(err) {
     console.error('Bybit import error:', err);
@@ -6684,91 +6684,127 @@ function parseBybitXLSX_rows(rows) {
 }
 
 
-// ── XLSX Row Reader (no dependencies) ─────────────────────────
-function readXLSXRows(arrayBuffer) {
-  // XLSX = ZIP containing XML files
+// ── XLSX Row Reader — async, uses DecompressionStream (Chrome 80+, Firefox 113+) ──
+async function readXLSXRows(arrayBuffer) {
   const uint8 = new Uint8Array(arrayBuffer);
 
-  function readZip(data) {
-    // Find all central directory entries
+  // ── ZIP local-file-header parser ──────────────────────────────
+  async function extractZipFiles(data) {
     const files = {};
     let i = 0;
-    while (i < data.length - 4) {
-      // Local file header signature: PK\x03\x04
-      if (data[i] === 0x50 && data[i+1] === 0x4B && data[i+2] === 0x03 && data[i+3] === 0x04) {
-        const compMethod    = data[i+8]  | (data[i+9]  << 8);
-        const compSize      = data[i+18] | (data[i+19] << 8) | (data[i+20] << 16) | (data[i+21] << 24);
-        const uncompSize    = data[i+22] | (data[i+23] << 8) | (data[i+24] << 16) | (data[i+25] << 24);
-        const nameLen       = data[i+26] | (data[i+27] << 8);
-        const extraLen      = data[i+28] | (data[i+29] << 8);
-        const name          = new TextDecoder().decode(data.slice(i+30, i+30+nameLen));
-        const dataStart     = i + 30 + nameLen + extraLen;
+    const dec = new TextDecoder('utf-8');
 
-        let fileData;
-        if (compMethod === 0) {
-          fileData = data.slice(dataStart, dataStart + uncompSize);
-        } else if (compMethod === 8) {
-          fileData = pako_inflate(data.slice(dataStart, dataStart + compSize));
+    while (i < data.length - 30) {
+      // Local file header: PK\x03\x04
+      if (data[i]!==0x50||data[i+1]!==0x4B||data[i+2]!==0x03||data[i+3]!==0x04) { i++; continue; }
+
+      const compMethod = data[i+8]  | (data[i+9]  << 8);
+      const compSize   = data[i+18] | (data[i+19] << 8) | (data[i+20] << 16) | (data[i+21] << 24);
+      const uncompSize = data[i+22] | (data[i+23] << 8) | (data[i+24] << 16) | (data[i+25] << 24);
+      const nameLen    = data[i+26] | (data[i+27] << 8);
+      const extraLen   = data[i+28] | (data[i+29] << 8);
+      const name       = dec.decode(data.slice(i+30, i+30+nameLen));
+      const dataStart  = i + 30 + nameLen + extraLen;
+
+      let bytes;
+      if (compMethod === 0) {
+        // Stored — no compression
+        bytes = data.slice(dataStart, dataStart + uncompSize);
+      } else if (compMethod === 8) {
+        // DEFLATE — use DecompressionStream
+        try {
+          const compressed = data.slice(dataStart, dataStart + compSize);
+          const ds = new DecompressionStream('deflate-raw');
+          const writer = ds.writable.getWriter();
+          const reader = ds.readable.getReader();
+          writer.write(compressed);
+          writer.close();
+          const chunks = [];
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+          }
+          const total = chunks.reduce((s, c) => s + c.length, 0);
+          bytes = new Uint8Array(total);
+          let off = 0;
+          for (const ch of chunks) { bytes.set(ch, off); off += ch.length; }
+        } catch(e) {
+          console.warn('Decompress failed for', name, e.message);
+          i = dataStart + compSize;
+          continue;
         }
-        if (fileData) files[name] = fileData;
-        i = dataStart + compSize;
-      } else {
-        i++;
       }
+
+      if (bytes) files[name] = new TextDecoder('utf-8').decode(bytes);
+      i = dataStart + compSize;
     }
     return files;
   }
 
-  // Minimal DEFLATE inflate using DecompressionStream (modern browsers)
-  function pako_inflate(compressed) {
-    try {
-      // Use DecompressionStream API (Chrome 80+, Firefox 113+)
-      // We can't use it synchronously, so we'll use a manual approach
-      // For now, try to use CompressionStream polyfill approach
-      // Actually, fall back to a simpler approach
-      throw new Error('async decompress needed');
-    } catch(e) {
-      return null;
+  // ── XML cell value extractor ───────────────────────────────────
+  function parseXMLRows(sheetXML, sharedStrings) {
+    const rows = [];
+    // Parse shared strings
+    const strings = [];
+    const siMatches = sharedStrings.matchAll(/<si[^>]*>([\s\S]*?)<\/si>/g);
+    for (const m of siMatches) {
+      const texts = [...m[1].matchAll(/<t[^>]*>([^<]*)<\/t>/g)].map(t => t[1]);
+      strings.push(texts.join(''));
     }
-  }
 
-  // Try DecompressionStream approach via sync simulation
-  // Since we can't go async here, we'll parse the raw XML directly
-  // by looking for the worksheet XML in the raw bytes
+    // Parse rows
+    const rowMatches = sheetXML.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g);
+    for (const rowM of rowMatches) {
+      const cells = [];
+      const cellMatches = rowM[1].matchAll(/<c\s([^>]*)>([\s\S]*?)<\/c>/g);
+      for (const cm of cellMatches) {
+        const attrs = cm[1];
+        const inner = cm[2];
+        const t = (attrs.match(/t="([^"]*)"/) || [])[1] || '';
+        const ref = (attrs.match(/r="([^"]*)"/) || [])[1] || '';
 
-  const decoder = new TextDecoder('utf-8');
-  const fullText = decoder.decode(uint8);
+        // Get column index from ref (A=0, B=1, ... Z=25, AA=26...)
+        const col = ref.replace(/[0-9]/g,'');
+        let colIdx = 0;
+        for (let ci = 0; ci < col.length; ci++) {
+          colIdx = colIdx * 26 + (col.charCodeAt(ci) - 64);
+        }
+        colIdx -= 1; // 0-based
 
-  // Find worksheet content directly in raw ZIP data
-  // Look for <worksheet or <row markers
-  const wsStart = fullText.indexOf('<worksheet');
-  const wsEnd   = fullText.indexOf('</worksheet>');
+        let val = '';
+        if (t === 's') {
+          // Shared string index
+          const vMatch = inner.match(/<v>(\d+)<\/v>/);
+          if (vMatch) val = strings[parseInt(vMatch[1])] || '';
+        } else if (t === 'inlineStr') {
+          const tMatch = inner.match(/<t[^>]*>([^<]*)<\/t>/);
+          if (tMatch) val = tMatch[1];
+        } else {
+          const vMatch = inner.match(/<v>([^<]*)<\/v>/);
+          if (vMatch) val = vMatch[1];
+        }
 
-  if (wsStart === -1) {
-    // Try finding <sheetData directly
-    const sdStart = fullText.indexOf('<sheetData>');
-    if (sdStart === -1) throw new Error('Could not find sheet data in XLSX');
-  }
-
-  // Extract XML between worksheet tags
-  const xmlChunk = wsEnd > wsStart
-    ? fullText.slice(wsStart, wsEnd + 12)
-    : fullText.slice(wsStart);
-
-  // Parse rows from XML
-  const rows = [];
-  const rowMatches = xmlChunk.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g);
-
-  for (const rowMatch of rowMatches) {
-    const cells = [];
-    const cellMatches = rowMatch[1].matchAll(/<c[^>]*(?:t="inlineStr"[^>]*)?>[\s\S]*?(?:<is><t[^>]*>([\s\S]*?)<\/t><\/is>|<v>([\s\S]*?)<\/v>)[\s\S]*?<\/c>/g);
-    for (const cm of cellMatches) {
-      cells.push(cm[1] !== undefined ? cm[1] : (cm[2] || ''));
+        // Pad cells array to correct position
+        while (cells.length <= colIdx) cells.push('');
+        cells[colIdx] = val;
+      }
+      if (cells.some(c => c !== '')) rows.push(cells);
     }
-    if (cells.length) rows.push(cells);
+    return rows;
   }
 
-  return rows;
+  // ── Main ──────────────────────────────────────────────────────
+  const files = await extractZipFiles(uint8);
+
+  const sheetKey = Object.keys(files).find(k => k.match(/xl\/worksheets\/sheet\d+\.xml$/));
+  if (!sheetKey) throw new Error('Could not find worksheet in XLSX');
+
+  const ssKey = Object.keys(files).find(k => k.includes('sharedStrings'));
+  const sheetXML  = files[sheetKey];
+  const ssXML     = ssKey ? files[ssKey] : '';
+
+  return parseXMLRows(sheetXML, ssXML);
 }
 
 // ── TRADEROW CSV IMPORTER (existing format) ───────────────────
@@ -6780,14 +6816,23 @@ function importCSV(file) {
 }
 
 function importCSV_text(text) {
-  // Normalize all line endings (\r\n, \r, \n) to \n
+  // Normalize ALL line ending variants — \r\n (Windows), \r (old Mac), \n (Unix)
   const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   const lines = normalized.split('\n').filter(l => l.trim());
-  if (lines.length < 2) { showToast('Empty CSV', true); return; }
+
+  if (lines.length < 2) {
+    // Try one more time splitting on \r in case normalization missed something
+    const fallback = text.split('\r').filter(l => l.trim());
+    if (fallback.length >= 2) {
+      return importCSV_text(fallback.join('\n'));
+    }
+    showToast('Empty or unreadable CSV file', true);
+    return;
+  }
 
   const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
 
-  // ── Auto-detect BingX CSV (same format as BingX XLSX but CSV export) ──
+  // ── Auto-detect BingX CSV ──
   if (headers.some(h => h === 'Open Time') && headers.some(h => h.includes('Futures'))) {
     const rows = lines.map(line => line.split(',').map(c => c.trim().replace(/^"|"$/g, '')));
     parseBingXCSV(rows);
@@ -6813,6 +6858,10 @@ function importCSV_text(text) {
       obj[h] = v;
     });
     if (obj.pair) imported.push(obj);
+  }
+  if (imported.length === 0) {
+    showToast('No matching trades found. Is this a TradeROW CSV export?', true);
+    return;
   }
   const newIds = new Set(imported.map(t => t.id));
   const kept = trades.filter(t => !newIds.has(t.id));
