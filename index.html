@@ -5455,12 +5455,14 @@ function renderCalendar() {
       else cls += ' cal-be';
 
       const pnlStr = (dayPnl>=0?'+':'')+fmtMoney(dayPnl);
-      gridHTML += `<div class="${cls}">
-        <span class="cal-day-num">${day}</span>
-        <span class="cal-pnl ${pnlCls}">${pnlStr}</span>
-        <span class="cal-meta">${dayTrades.length} trade${dayTrades.length>1?'s':''} · ${dayWR}% WR</span>
-        ${dayRR?`<span class="cal-rr" style="color:${parseFloat(dayRR)>=2?'var(--win)':parseFloat(dayRR)>=1?'var(--gold)':'var(--muted)'}">${dayRR}R avg</span>`:''}
-      </div>`;
+      const rrColor = dayRR ? (parseFloat(dayRR)>=2?'var(--win)':parseFloat(dayRR)>=1?'var(--gold)':'var(--muted)') : '';
+      const rrSpan  = dayRR ? '<span class="cal-rr" style="color:'+rrColor+'">'+dayRR+'R avg</span>' : '';
+      gridHTML += '<div class="'+cls+'">'
+        + '<span class="cal-day-num">'+day+'</span>'
+        + '<span class="cal-pnl '+pnlCls+'">'+pnlStr+'</span>'
+        + '<span class="cal-meta">'+dayTrades.length+' trade'+(dayTrades.length>1?'s':'')+' · '+dayWR+'% WR</span>'
+        + rrSpan
+        + '</div>';
     }
 
     // End of week — save summary
@@ -6681,142 +6683,6 @@ function parseBybitXLSX_rows(rows) {
   }
 }
 
-
-  try {
-    // Parse XLSX ZIP manually — no library needed
-    const rows = readXLSXRows(arrayBuffer);
-    if (!rows || rows.length < 2) { showToast('Empty or unreadable file', true); return; }
-
-    const headers = rows[0];
-    // Detect Bybit format by checking for known headers
-    const isBybit = headers.some(h => h === 'Time(UTC+8)' || h === 'Futures');
-    if (!isBybit) { showToast('⚠ Unknown XLSX format. Only Bybit Futures Transaction History supported.', true); return; }
-
-    const hIdx = {};
-    headers.forEach((h, i) => { hIdx[h] = i; });
-
-    const get = (row, col) => row[hIdx[col]] || '';
-
-    // Group rows by (Futures symbol + close timestamp)
-    // Same pair + same timestamp = same trade event
-    const tradeMap = new Map();
-
-    rows.slice(1).forEach(row => {
-      const time    = get(row, 'Time(UTC+8)');
-      const type    = get(row, 'type');
-      const detail  = get(row, 'Details');
-      const amount  = parseFloat(get(row, 'Amount')) || 0;
-      const newBal  = parseFloat(get(row, 'newAvailableAmount')) || 0;
-      const future  = get(row, 'Futures');
-
-      if (!future || !time) return;
-      // Only process rows with a Futures symbol
-      // Skip pure Transfer rows
-      if (type === 'Transfer') return;
-
-      const key = `${future}::${time}`;
-
-      if (!tradeMap.has(key)) {
-        tradeMap.set(key, {
-          key, time, future,
-          pnl: 0, fees: 0, funding: 0,
-          detail: null, balance: 0
-        });
-      }
-      const t = tradeMap.get(key);
-
-      if (type === 'Realized PnL') {
-        t.pnl    += amount;
-        t.detail  = detail;   // 'Buy to Close' or 'Sell to Close'
-        t.balance = newBal;
-      } else if (type === 'Trading fee') {
-        t.fees   += amount;
-      } else if (type === 'Funding Fee') {
-        t.funding += amount;
-      }
-    });
-
-    // Convert grouped map to TradeROW trade objects
-    const imported = [];
-    tradeMap.forEach(t => {
-      if (t.pnl === 0 && t.fees === 0) return; // skip rows without PnL
-
-      const netPnl   = t.pnl + t.fees; // gross PnL minus fees
-      const grossPnl = t.pnl;
-      const totalFees = Math.abs(t.fees);
-
-      // Direction: "Buy to Close" = was Short, "Sell to Close" = was Long
-      const direction = (t.detail === 'Buy to Close') ? 'short' : 'long';
-
-      // Clean pair name — strip exchange prefix (NCCO1, etc.) and -USDT suffix display
-      const rawPair = t.future.replace(/-USDT$/, '').replace(/-USDT$/, '');
-      const pair    = rawPair + '/USDT';
-
-      // Parse timestamp (UTC+8 → ISO)
-      const dt  = new Date(t.time.replace(' ', 'T') + '+08:00');
-      const iso = dt.toISOString();
-
-      const result = netPnl > 0.001 ? 'Win' : netPnl < -0.001 ? 'Loss' : 'BE';
-
-      imported.push({
-        id:           crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random(),
-        timestamp:    iso,
-        date:         iso,
-        entryTime:    iso,
-        exitTime:     iso,
-        pair:         pair,
-        direction,
-        market_type:  'crypto',
-        entry:        0,
-        entryPrice:   0,
-        exitPrice:    0,
-        posSize:      0,
-        pnl:          netPnl,
-        netPnl,
-        grossPnl,
-        result,
-        rrr:          0,
-        rr:           0,
-        riskPct:      0,
-        totalFees,
-        balanceAfter: t.balance,
-        holdMinutes:  null,
-        entryValue:   0,
-        exitValue:    0,
-        notes:        `Imported from Bybit. Funding: ${t.funding >= 0 ? '+' : ''}${t.funding.toFixed(4)} USDT`,
-        screenshot:   '',
-        behaviors:    [],
-        tags:         { psych: [], setup: [], strategy: [] },
-        riskAdherent: true,
-        source:       'bybit-import',
-      });
-    });
-
-    if (imported.length === 0) {
-      showToast('No trades found in file', true);
-      return;
-    }
-
-    // Merge: skip trades already in local by matching pair+date
-    const existingKeys = new Set(trades.map(t => `${t.pair}::${t.date}`));
-    const fresh = imported.filter(t => !existingKeys.has(`${t.pair}::${t.date}`));
-
-    trades = [...fresh, ...trades];
-    // Sort by date descending
-    trades.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    save(); renderAll();
-    // Sync all new trades to cloud
-    fresh.forEach(t => { if (typeof syncTradeToSupabase === 'function') syncTradeToSupabase(t); });
-
-    showToast(`✅ Imported ${fresh.length} trade${fresh.length !== 1 ? 's' : ''} from Bybit${imported.length > fresh.length ? ` (${imported.length - fresh.length} skipped — already exist)` : ''}`);
-
-  } catch(err) {
-    console.error('Bybit import error:', err);
-    showToast('Import failed: ' + err.message, true);
-    if (window.sentryCapture) window.sentryCapture({ type:'exception', message:'parseBybitXLSX: '+err.message, context:{ source:'import' } });
-  }
-}
 
 // ── XLSX Row Reader (no dependencies) ─────────────────────────
 function readXLSXRows(arrayBuffer) {
